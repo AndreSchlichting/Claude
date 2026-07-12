@@ -223,6 +223,59 @@
         </p>
       </div>
     </template>
+    <!-- ============ NEWS-SCHOCK (§142.8) ============ -->
+    <template v-if="activeMode === 'newsschock'">
+      <div class="card bg-blue-50/40 dark:bg-blue-950/30">
+        <p class="font-bold text-sm">Entscheidungsfrage: Verändert diese Nachricht die Lage sofort?</p>
+      </div>
+
+      <div class="card">
+        <h3 class="font-bold mb-2">Typische Auslöser</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Earnings-Überraschung • Gewinnwarnung • Analystenabstufung • Übernahmegerücht •
+          regulatorische Nachricht • Betrugsverdacht • Handelsaussetzung • Krypto-Hack •
+          ETF-Zulassung/Ablehnung • Zentralbankentscheidung
+        </p>
+      </div>
+
+      <div v-if="!store.settings.riskOffMode" class="card border-l-4 border-red-500">
+        <h3 class="font-bold mb-3">News-Schock auslösen</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Konsequenz: Rote Warnung wird erzeugt, Risk-Off aktiviert sich, neue Einstiege sind blockiert,
+          bis die Lage geklärt ist.
+        </p>
+        <div class="flex gap-2 flex-wrap">
+          <input v-model="newsShockNote" placeholder="Was ist passiert? (z.B. 'Fed-Entscheid überraschend hawkish')"
+            class="input-field flex-1 min-w-[240px]" />
+          <button @click="triggerNewsShock" :disabled="!newsShockNote.trim()" class="btn btn-danger disabled:opacity-50">
+            📰 News-Schock auslösen
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="card border-l-4 border-red-500 bg-red-50/40 dark:bg-red-950/30">
+        <h3 class="font-bold text-red-900 dark:text-red-200 mb-2">🚨 News-Schock / Risk-Off AKTIV</h3>
+        <ul class="text-sm text-red-800 dark:text-red-300 space-y-1 mb-4">
+          <li>• Neue Einstiege sind blockiert (Trade-Gate)</li>
+          <li>• Offene Positionen im Trade-Management prüfen</li>
+          <li>• Erst wieder handeln, wenn die Lage verstanden ist - nicht, wenn sie sich nur beruhigt anfühlt</li>
+        </ul>
+        <button @click="clearNewsShock" class="btn btn-secondary">✓ Lage geklärt - Handel wieder freigeben</button>
+      </div>
+
+      <div v-if="openPositions.length" class="card">
+        <h3 class="font-bold mb-3">Betroffene offene Positionen ({{ openPositions.length }})</h3>
+        <div class="space-y-2">
+          <div v-for="pos in openPositions" :key="pos.id"
+            class="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 flex justify-between items-center text-sm">
+            <span class="font-medium">{{ pos.asset.symbol }} • {{ pos.quantity }} Stück</span>
+            <span :class="unrealized(pos) >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'">
+              {{ unrealized(pos) >= 0 ? '+' : '' }}{{ unrealized(pos).toFixed(2) }} €
+            </span>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -242,8 +295,34 @@ const modes = [
   { id: 'scanner', label: 'Live-Scanner', icon: '📡' },
   { id: 'management', label: 'Trade-Management', icon: '🎯' },
   { id: 'exit', label: 'Exit-Modus', icon: '🚪' },
-  { id: 'riskoff', label: 'Risk-Off', icon: '🛑' }
+  { id: 'riskoff', label: 'Risk-Off', icon: '🛑' },
+  { id: 'newsschock', label: 'News-Schock', icon: '📰' }
 ]
+
+// News-Schock-Modus (§142.8): sofortige Neubewertung bei Nachrichten
+const newsShockNote = ref('')
+
+const triggerNewsShock = () => {
+  if (!newsShockNote.value.trim()) return
+  store.settings.riskOffMode = true
+  store.addWarning({
+    id: `warn_newsshock_${Date.now()}`,
+    timestamp: new Date(),
+    assetId: '',
+    level: 'red',
+    type: 'News-Schock',
+    message: `News-Schock ausgelöst: ${newsShockNote.value.trim()} - Positionen sofort prüfen, neue Einstiege blockiert`,
+    isResolved: false
+  })
+  store.logEvent('news_erkannt', `NEWS-SCHOCK: ${newsShockNote.value.trim()}`,
+    { detail: 'Risk-Off aktiviert, neue Einstiege blockiert (§142.8)' })
+  newsShockNote.value = ''
+}
+
+const clearNewsShock = () => {
+  store.settings.riskOffMode = false
+  store.logEvent('modus_geaendert', 'News-Schock aufgehoben: Lage geklärt, Handel wieder freigegeben')
+}
 
 interface ScanResult {
   asset: any

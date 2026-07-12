@@ -47,10 +47,51 @@
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
           1-5 Min: sehr kurzfristige Ein-/Ausstiege • 10-15 Min: saubere Intraday-Setups • 30-60 Min: Tagesstruktur.
-          Ansichtszeitraum: {{ selectedAssetClass === 'crypto' ? 'rollierende 24 Stunden (Krypto = 24/7-Markt)' : 'aktueller Handelstag' }}
+        </p>
+      </div>
+      <!-- Ansichtszeitraum (§134) - getrennt vom Kerzenintervall (§136) -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Ansichtszeitraum</label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="win in viewWindows"
+            :key="win.value"
+            @click="selectedViewWindow = win.value"
+            :class="['glass-chip', selectedViewWindow === win.value ? 'glass-chip-active' : 'glass-chip-inactive']"
+          >
+            {{ win.label }}
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          Maximal {{ selectedAssetClass === 'crypto' ? 'rollierende 24 Stunden (Krypto = 24/7-Markt)' : 'der aktuelle Handelstag' }} -
+          Daytrading arbeitet nicht mit Wochen- oder Monatscharts.
         </p>
       </div>
     </div>
+
+    <!-- Datenstatus (§137): Echtzeit oder verzögert? -->
+    <div v-if="selectedAssetId" class="card">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <span class="font-bold">Datenstatus:</span>
+        <span class="flex items-center gap-1.5">
+          <span :class="['w-2.5 h-2.5 rounded-full', dataStatus.realtime ? 'bg-green-500' : 'bg-orange-500']"></span>
+          {{ dataStatus.statusLabel }}
+        </span>
+        <span class="text-gray-600 dark:text-gray-400">Quelle: {{ dataStatus.source }}</span>
+        <span class="text-gray-600 dark:text-gray-400">Letzte Kerze: {{ dataStatus.lastUpdate }}</span>
+        <span class="text-gray-600 dark:text-gray-400">{{ dataStatus.candleCount }} Kerzen ({{ selectedInterval }})</span>
+      </div>
+      <p v-if="!dataStatus.realtime" class="text-xs text-orange-700 dark:text-orange-300 mt-2">
+        ⚠ Verzögerte Daten: Daytrading-Signale nur eingeschränkt belastbar - keine A-Signale auf dieser Basis (§138).
+      </p>
+    </div>
+
+    <!-- Kerzenchart im gewählten Ansichtszeitraum -->
+    <CandleChart
+      v-if="selectedAssetId && windowedHistory.length > 1"
+      :priceHistory="windowedHistory"
+      :title="`Intraday-Chart (${viewWindowLabel})`"
+    />
 
     <!-- Active Signals -->
     <div v-if="selectedAssetId && daytradesignals.length > 0" class="space-y-4">
@@ -98,6 +139,13 @@
         <div v-if="signal.isTooLate" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded">
           <p class="text-sm font-medium text-gray-900 dark:text-white">Nicht hinterherlaufen!</p>
           <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ signal.tooLateReason }}</p>
+        </div>
+
+        <!-- Order-Ticket öffnen (manuelle Bestätigung, Vorstufe Broker-API 3.0) -->
+        <div v-if="!signal.isTooLate" class="mb-4">
+          <button @click="ticketSignal = signal" class="btn btn-secondary text-sm">
+            📋 Order-Ticket erstellen
+          </button>
         </div>
 
         <!-- Signal Details Grid -->
@@ -171,6 +219,14 @@
       <p class="text-gray-600 dark:text-gray-400">Wählen Sie ein Asset aus, um Daytrading-Signale zu sehen</p>
     </div>
 
+    <!-- Order-Ticket (manuelle Bestätigung) -->
+    <OrderTicket
+      v-if="ticketSignal && selectedAsset"
+      :signal="ticketSignal"
+      :asset="selectedAsset"
+      @close="ticketSignal = null"
+    />
+
     <!-- Positionsgrößen-Rechner -->
     <PositionSizeCalculator />
 
@@ -208,6 +264,8 @@ import { apiService } from '../services/api'
 import { DaytradingEngine } from '../services/daytradingEngine'
 import { WarningEngine } from '../services/warningEngine'
 import PositionSizeCalculator from '../components/PositionSizeCalculator.vue'
+import OrderTicket from '../components/OrderTicket.vue'
+import CandleChart from '../components/CandleChart.vue'
 import type { IntrabarSignal, DaytradesStats } from '../services/daytradingEngine'
 
 const store = useAppStore()
@@ -229,8 +287,55 @@ const candleIntervals = [
   { value: '60min', label: '60 Min' }
 ]
 
-const selectedAssetClass = computed(() => {
-  return store.assets.find(a => a.id === selectedAssetId.value)?.assetClass || 'stock'
+const selectedAsset = computed(() => store.assets.find(a => a.id === selectedAssetId.value) || null)
+
+const selectedAssetClass = computed(() => selectedAsset.value?.assetClass || 'stock')
+
+// Order-Ticket-Zustand
+const ticketSignal = ref<IntrabarSignal | null>(null)
+
+// Ansichtszeitraum (§134): zulässig sind nur kurzfristige Fenster
+const selectedViewWindow = ref(24 * 60) // Minuten; 24h = Maximum
+const viewWindows = [
+  { value: 60, label: '60 Min' },
+  { value: 120, label: '2 h' },
+  { value: 240, label: '4 h' },
+  { value: 360, label: '6 h' },
+  { value: 24 * 60, label: 'Heute / 24 h' }
+]
+
+const viewWindowLabel = computed(() =>
+  viewWindows.find(w => w.value === selectedViewWindow.value)?.label || '24 h')
+
+/** Kerzen im gewählten Ansichtszeitraum (relativ zur letzten Kerze) */
+const windowedHistory = computed(() => {
+  const h = selectedAsset.value?.priceHistory || []
+  if (h.length === 0) return []
+  const lastTs = new Date(h[h.length - 1].timestamp).getTime()
+  const cutoff = lastTs - selectedViewWindow.value * 60 * 1000
+  const windowed = h.filter(p => new Date(p.timestamp).getTime() >= cutoff)
+  // Bei Tagesdaten (1d) greift das Zeitfenster nicht - dann letzte Kerzen zeigen
+  return windowed.length > 1 ? windowed : h.slice(-30)
+})
+
+/** Datenstatus (§137): Echtzeit oder verzögert, Quelle, letzte Aktualisierung */
+const dataStatus = computed(() => {
+  const h = selectedAsset.value?.priceHistory || []
+  const isCrypto = selectedAssetClass.value === 'crypto'
+  const lastCandle = h[h.length - 1]
+  const lastTs = lastCandle ? new Date(lastCandle.timestamp) : null
+  const ageMin = lastTs ? (Date.now() - lastTs.getTime()) / 60000 : Infinity
+
+  const realtime = isCrypto && ageMin < 45
+  return {
+    realtime,
+    statusLabel: realtime ? 'Echtzeit (≈30 s Cache)' : isCrypto ? `verzögert (${Math.round(ageMin)} Min alt)` : 'verzögert / Tagesdaten',
+    source: isCrypto ? 'Binance Public API' : 'Alpha Vantage',
+    lastUpdate: lastTs
+      ? new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(lastTs)
+      : '–',
+    candleCount: h.length
+  }
 })
 
 const dataQualitySufficient = computed(() => {
