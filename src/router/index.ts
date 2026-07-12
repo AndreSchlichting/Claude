@@ -8,6 +8,8 @@ import EventLog from '../pages/EventLog.vue'
 import Modi from '../pages/Modi.vue'
 import AnalysisTools from '../pages/AnalysisTools.vue'
 import Journal from '../pages/Journal.vue'
+import Replay from '../pages/Replay.vue'
+import Calendar from '../pages/Calendar.vue'
 import Settings from '../pages/Settings.vue'
 
 const routes = [
@@ -55,6 +57,16 @@ const routes = [
     path: '/journal',
     name: 'Journal',
     component: Journal
+  },
+  {
+    path: '/replay',
+    name: 'Replay',
+    component: Replay
+  },
+  {
+    path: '/kalender',
+    name: 'Calendar',
+    component: Calendar
   },
   {
     path: '/settings',

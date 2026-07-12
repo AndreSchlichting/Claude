@@ -27,6 +27,20 @@
     <!-- Marktampel / Regime-Filter -->
     <MarketLight />
 
+    <!-- Anstehende wichtige Termine -->
+    <div v-if="store.upcomingEvents.length > 0" class="card border-l-4 border-blue-400">
+      <div class="flex justify-between items-center mb-2">
+        <p class="font-bold text-sm">📅 Termine in den nächsten 7 Tagen</p>
+        <RouterLink to="/kalender" class="text-xs text-primary hover:underline">Kalender öffnen →</RouterLink>
+      </div>
+      <ul class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+        <li v-for="e in store.upcomingEvents.slice(0, 4)" :key="e.id">
+          <b>{{ e.date }}</b>: {{ e.title }}
+          <span v-if="e.importance === 'hoch'" class="text-red-600 font-medium">• wichtig</span>
+        </li>
+      </ul>
+    </div>
+
     <!-- Watchlist -->
     <div v-if="watchlistAssets.length > 0" class="card">
       <h2 class="text-lg font-bold mb-4">⭐ Watchlist</h2>

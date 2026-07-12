@@ -176,6 +176,19 @@ export interface JournalEntry {
   netResult?: number
 }
 
+// News-/Makro-Kalender (Ausbaustufe 0.4)
+export type CalendarImportance = 'niedrig' | 'mittel' | 'hoch'
+
+export interface CalendarEvent {
+  id: string
+  date: string // JJJJ-MM-TT
+  title: string
+  importance: CalendarImportance
+  category: 'earnings' | 'zentralbank' | 'makro' | 'krypto' | 'sonstiges'
+  assetSymbol?: string
+  note?: string
+}
+
 // Preis-Alerts: Alarm-Level je Asset
 export interface PriceAlert {
   id: string

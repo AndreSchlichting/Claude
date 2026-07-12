@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent } from '../types'
 
 const STORAGE_KEY = 'tdl_state_v1'
 
@@ -36,6 +36,7 @@ export const useAppStore = defineStore('app', () => {
   const journal = ref<JournalEntry[]>([])
   const priceAlerts = ref<PriceAlert[]>([])
   const watchlist = ref<string[]>([])
+  const calendarEvents = ref<CalendarEvent[]>([])
   const analyses = ref<Analysis[]>([])
   const warningEvents = ref<WarningEvent[]>([])
   const transactions = ref<Transaction[]>([])
@@ -226,6 +227,25 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
+  // --- Kalender (Ausbaustufe 0.4) ---
+  const addCalendarEvent = (event: CalendarEvent) => {
+    calendarEvents.value.push(event)
+    calendarEvents.value.sort((a, b) => a.date.localeCompare(b.date))
+    logEvent('news_erkannt', `Termin eingetragen: ${event.title} am ${event.date}`,
+      { assetSymbol: event.assetSymbol })
+  }
+
+  const removeCalendarEvent = (id: string) => {
+    calendarEvents.value = calendarEvents.value.filter(e => e.id !== id)
+  }
+
+  /** Termine in den nächsten X Tagen (für Warnungen und Positionsgrößen-Hinweise) */
+  const upcomingEvents = computed(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const inSevenDays = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    return calendarEvents.value.filter(e => e.date >= today && e.date <= inSevenDays)
+  })
+
   // --- Watchlist ---
   const toggleWatchlist = (assetId: string) => {
     if (watchlist.value.includes(assetId)) {
@@ -246,6 +266,7 @@ export const useAppStore = defineStore('app', () => {
       if (data.journal) journal.value = data.journal
       if (data.priceAlerts) priceAlerts.value = data.priceAlerts
       if (data.watchlist) watchlist.value = data.watchlist
+      if (data.calendarEvents) calendarEvents.value = data.calendarEvents
       if (data.transactions) transactions.value = data.transactions
       if (data.analyses) analyses.value = data.analyses
       if (data.warningEvents) warningEvents.value = data.warningEvents
@@ -264,6 +285,7 @@ export const useAppStore = defineStore('app', () => {
         journal: journal.value,
         priceAlerts: priceAlerts.value,
         watchlist: watchlist.value,
+        calendarEvents: calendarEvents.value,
         eventLog: eventLog.value.slice(0, 300),
         transactions: transactions.value,
         analyses: analyses.value.slice(0, 100),
@@ -278,7 +300,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   loadPersisted()
-  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist],
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents],
     persist, { deep: true })
 
   return {
@@ -291,6 +313,8 @@ export const useAppStore = defineStore('app', () => {
     journal,
     priceAlerts,
     watchlist,
+    calendarEvents,
+    upcomingEvents,
     transactions,
     selectedCurrency,
     selectedLanguage,
@@ -322,6 +346,8 @@ export const useAppStore = defineStore('app', () => {
     addPriceAlert,
     removePriceAlert,
     checkPriceAlerts,
-    toggleWatchlist
+    toggleWatchlist,
+    addCalendarEvent,
+    removeCalendarEvent
   }
 })

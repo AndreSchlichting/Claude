@@ -24,6 +24,12 @@
             <RouterLink to="/journal" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Journal
             </RouterLink>
+            <RouterLink to="/replay" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              Replay
+            </RouterLink>
+            <RouterLink to="/kalender" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              Kalender
+            </RouterLink>
             <RouterLink to="/protokoll" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Protokoll
             </RouterLink>
