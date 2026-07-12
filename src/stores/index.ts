@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert } from '../types'
 
 const STORAGE_KEY = 'tdl_state_v1'
 
@@ -33,6 +33,9 @@ export const useAppStore = defineStore('app', () => {
     emptyPortfolio('pf_shadow', 'Shadow Portfolio', 'shadow')
   ])
   const eventLog = ref<EventLogEntry[]>([])
+  const journal = ref<JournalEntry[]>([])
+  const priceAlerts = ref<PriceAlert[]>([])
+  const watchlist = ref<string[]>([])
   const analyses = ref<Analysis[]>([])
   const warningEvents = ref<WarningEvent[]>([])
   const transactions = ref<Transaction[]>([])
@@ -173,6 +176,65 @@ export const useAppStore = defineStore('app', () => {
     if (event) event.markedAsFalseAlarm = true
   }
 
+  // --- Trade-Journal ---
+  const addJournalEntry = (entry: JournalEntry) => {
+    journal.value.unshift(entry)
+    logEvent('trade_ausgefuehrt', `Journal: ${entry.direction} ${entry.assetSymbol} @ ${entry.entryPrice}`,
+      { assetSymbol: entry.assetSymbol, detail: `Emotion: ${entry.emotion}` })
+  }
+
+  const closeJournalEntry = (id: string, exitPrice: number, planFollowed: boolean, lessons?: string) => {
+    const entry = journal.value.find(j => j.id === id)
+    if (!entry) return
+    entry.exitPrice = exitPrice
+    entry.closedAt = new Date()
+    entry.status = 'geschlossen'
+    entry.planFollowed = planFollowed
+    entry.lessons = lessons
+    const sign = entry.direction === 'long' ? 1 : -1
+    entry.netResult = (exitPrice - entry.entryPrice) * entry.quantity * sign
+  }
+
+  // --- Preis-Alerts ---
+  const addPriceAlert = (alert: PriceAlert) => {
+    priceAlerts.value.push(alert)
+  }
+
+  const removePriceAlert = (id: string) => {
+    priceAlerts.value = priceAlerts.value.filter(a => a.id !== id)
+  }
+
+  /** Prüft alle aktiven Alerts gegen aktuelle Kurse - wird von Scanner & Daytrading aufgerufen */
+  const checkPriceAlerts = () => {
+    priceAlerts.value.filter(a => a.active).forEach(alert => {
+      const asset = assets.value.find(a => a.id === alert.assetId)
+      if (!asset || asset.currentPrice <= 0) return
+      const triggered = alert.direction === 'ueber'
+        ? asset.currentPrice >= alert.price
+        : asset.currentPrice <= alert.price
+      if (triggered) {
+        alert.active = false
+        addWarning({
+          id: `warn_alert_${alert.id}`, timestamp: new Date(), assetId: alert.assetId,
+          level: 'orange', type: 'Preis-Alert',
+          message: `${alert.assetSymbol}: Alarm-Level ${alert.price} ${alert.direction === 'ueber' ? 'überschritten' : 'unterschritten'} (aktuell ${asset.currentPrice.toFixed(2)})`,
+          isResolved: false
+        })
+        logEvent('warnung_ausgeloest', `Preis-Alert ausgelöst: ${alert.assetSymbol} ${alert.direction} ${alert.price}`,
+          { assetId: alert.assetId, assetSymbol: alert.assetSymbol })
+      }
+    })
+  }
+
+  // --- Watchlist ---
+  const toggleWatchlist = (assetId: string) => {
+    if (watchlist.value.includes(assetId)) {
+      watchlist.value = watchlist.value.filter(id => id !== assetId)
+    } else {
+      watchlist.value.push(assetId)
+    }
+  }
+
   // --- Persistenz: Zustand überlebt Neuladen der Seite ---
   const loadPersisted = () => {
     try {
@@ -181,6 +243,9 @@ export const useAppStore = defineStore('app', () => {
       const data = JSON.parse(raw, dateReviver)
       if (data.portfolios) portfolios.value = data.portfolios
       if (data.eventLog) eventLog.value = data.eventLog
+      if (data.journal) journal.value = data.journal
+      if (data.priceAlerts) priceAlerts.value = data.priceAlerts
+      if (data.watchlist) watchlist.value = data.watchlist
       if (data.transactions) transactions.value = data.transactions
       if (data.analyses) analyses.value = data.analyses
       if (data.warningEvents) warningEvents.value = data.warningEvents
@@ -196,6 +261,9 @@ export const useAppStore = defineStore('app', () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         portfolios: portfolios.value,
+        journal: journal.value,
+        priceAlerts: priceAlerts.value,
+        watchlist: watchlist.value,
         eventLog: eventLog.value.slice(0, 300),
         transactions: transactions.value,
         analyses: analyses.value.slice(0, 100),
@@ -210,7 +278,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   loadPersisted()
-  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage],
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist],
     persist, { deep: true })
 
   return {
@@ -220,6 +288,9 @@ export const useAppStore = defineStore('app', () => {
     analyses,
     warningEvents,
     eventLog,
+    journal,
+    priceAlerts,
+    watchlist,
     transactions,
     selectedCurrency,
     selectedLanguage,
@@ -245,6 +316,12 @@ export const useAppStore = defineStore('app', () => {
     addTransaction,
     updateSettings,
     logEvent,
-    markEventAsFalseAlarm
+    markEventAsFalseAlarm,
+    addJournalEntry,
+    closeJournalEntry,
+    addPriceAlert,
+    removePriceAlert,
+    checkPriceAlerts,
+    toggleWatchlist
   }
 })

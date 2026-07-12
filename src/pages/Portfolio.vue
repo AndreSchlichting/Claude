@@ -96,6 +96,12 @@
       </div>
     </div>
 
+    <!-- Korrelations-/Klumpenrisiko-Warnung -->
+    <div v-if="clusterRiskWarning" class="card border-l-4 border-orange-500 bg-orange-50/40 dark:bg-orange-950/30">
+      <p class="text-sm font-bold text-orange-900 dark:text-orange-200">⚠ Klumpenrisiko erkannt</p>
+      <p class="text-sm text-orange-800 dark:text-orange-300 mt-1">{{ clusterRiskWarning }}</p>
+    </div>
+
     <!-- Steuerreport-Export (§123.5) -->
     <div class="card flex justify-between items-center flex-wrap gap-3">
       <div>
@@ -270,11 +276,81 @@ const addNewPosition = () => {
   }
 }
 
+/**
+ * Echter Verkauf: Netto-Ergebnis berechnen, Position schließen,
+ * realisierten G/V verbuchen, Transaktion + Protokoll schreiben.
+ */
 const sellPosition = (positionId: string) => {
-  if (confirm('Position wirklich verkaufen?')) {
-    // Implementation for selling
-  }
+  const portfolio = store.portfolios.find(p => p.positions.some(pos => pos.id === positionId))
+  const position = portfolio?.positions.find(pos => pos.id === positionId)
+  if (!portfolio || !position) return
+
+  const result = NetResultEngine.calculateNetResult(
+    position, position.asset.currentPrice,
+    store.settings.feeProfile, store.settings.taxAssumption, 'EUR'
+  )
+
+  const ok = confirm(
+    `${position.quantity}x ${position.asset.symbol} zu ${position.asset.currentPrice.toFixed(2)} verkaufen?\n\n` +
+    `Brutto-Gewinn: ${result.grossGain.toFixed(2)} €\n` +
+    `Gebühren: -${result.totalFees.toFixed(2)} €\n` +
+    `Steuer (geschätzt): -${result.estimatedTax.toFixed(2)} €\n` +
+    `─────────────────\n` +
+    `NETTO: ${result.netGain.toFixed(2)} €`
+  )
+  if (!ok) return
+
+  portfolio.realizedGainLoss += result.netGain
+  portfolio.positions = portfolio.positions.filter(pos => pos.id !== positionId)
+  if (selectedPositionId.value === positionId) selectedPositionId.value = null
+
+  store.addTransaction({
+    id: `tx_${Date.now()}`,
+    portfolioId: portfolio.id,
+    assetId: position.asset.id,
+    type: 'sell',
+    quantity: position.quantity,
+    price: position.asset.currentPrice,
+    fees: result.sellFees,
+    taxes: result.estimatedTax,
+    currency: position.currency,
+    date: new Date(),
+    note: `Netto: ${result.netGain.toFixed(2)} €`
+  })
+  store.logEvent('trade_ausgefuehrt',
+    `Verkauf: ${position.quantity}x ${position.asset.symbol} @ ${position.asset.currentPrice.toFixed(2)} (Netto ${result.netGain >= 0 ? '+' : ''}${result.netGain.toFixed(2)} €)`,
+    { assetId: position.asset.id, assetSymbol: position.asset.symbol })
 }
+
+/**
+ * Korrelations-/Klumpenrisiko-Check: tragen mehrere Positionen dasselbe Risiko?
+ */
+const clusterRiskWarning = computed(() => {
+  const positions = store.portfolios.filter(p => p.type === 'real' || p.type === 'paper').flatMap(p => p.positions)
+  if (positions.length < 2) return ''
+
+  const byClass = new Map<string, { count: number; value: number }>()
+  let totalValue = 0
+  positions.forEach(pos => {
+    const value = pos.quantity * pos.asset.currentPrice
+    totalValue += value
+    const entry = byClass.get(pos.asset.assetClass) || { count: 0, value: 0 }
+    entry.count++
+    entry.value += value
+    byClass.set(pos.asset.assetClass, entry)
+  })
+
+  const warnings: string[] = []
+  byClass.forEach((entry, assetClass) => {
+    const share = totalValue > 0 ? (entry.value / totalValue) * 100 : 0
+    if (entry.count >= 3 && share > 60) {
+      warnings.push(`${entry.count} Positionen in "${assetClass}" = ${share.toFixed(0)}% des Portfolios. Das ist EIN Klumpenrisiko, keine Diversifikation - fällt die Assetklasse, fallen alle Positionen zusammen.`)
+    } else if (assetClass === 'crypto' && share > store.settings.maxCryptoQuota) {
+      warnings.push(`Krypto-Quote ${share.toFixed(0)}% über deinem Limit von ${store.settings.maxCryptoQuota}%.`)
+    }
+  })
+  return warnings.join(' ')
+})
 
 /**
  * Steuerstatus je Position (§120.5 / §123.4)

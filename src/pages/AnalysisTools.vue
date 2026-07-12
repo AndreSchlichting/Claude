@@ -165,6 +165,49 @@
         </p>
       </div>
 
+      <!-- Backtest-Light -->
+      <div class="card">
+        <div class="flex justify-between items-center flex-wrap gap-3 mb-3">
+          <div>
+            <h3 class="font-bold">Backtest-Light</h3>
+            <p class="text-xs text-gray-500">Wie oft hätte das Breakout-Setup (20er-Hoch, 2:1) in dieser Historie funktioniert?</p>
+          </div>
+          <button @click="runBacktest" class="btn btn-secondary text-sm">▶ Backtest starten</button>
+        </div>
+        <div v-if="backtestResult" class="space-y-3">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+              <p class="text-xs text-gray-500">Trades</p>
+              <p class="font-bold text-lg">{{ backtestResult.totalTrades }}</p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+              <p class="text-xs text-gray-500">Trefferquote</p>
+              <p class="font-bold text-lg">{{ backtestResult.winRate.toFixed(0) }}%</p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+              <p class="text-xs text-gray-500">Gesamt (R)</p>
+              <p :class="['font-bold text-lg', backtestResult.totalR >= 0 ? 'text-green-600' : 'text-red-600']">
+                {{ backtestResult.totalR >= 0 ? '+' : '' }}{{ backtestResult.totalR.toFixed(1) }}R
+              </p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+              <p class="text-xs text-gray-500">Ø pro Trade</p>
+              <p class="font-bold text-lg">{{ backtestResult.avgR.toFixed(2) }}R</p>
+            </div>
+            <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+              <p class="text-xs text-gray-500">Max. Drawdown</p>
+              <p class="font-bold text-lg text-red-600">{{ backtestResult.maxDrawdownR.toFixed(1) }}R</p>
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/40 text-sm">
+            <p class="font-medium">{{ backtestResult.verdict }}</p>
+            <p class="text-xs text-gray-500 mt-1">
+              R = Vielfaches des eingesetzten Risikos. Vergangenheit garantiert keine Zukunft - der Backtest zeigt nur, ob das Setup zum Markt passt. Gebühren/Slippage nicht enthalten.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Lernhinweise (§128 Wissensmodus) -->
       <div v-if="store.settings.learningHints" class="card border-l-4 border-blue-400">
         <h3 class="font-bold mb-3 flex items-center gap-2">💡 Lernhinweise</h3>
@@ -188,6 +231,8 @@ import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import { ExpertAnalysis } from '../services/expertAnalysis'
 import type { ExpertAnalysisResult } from '../services/expertAnalysis'
+import { Backtest } from '../services/backtest'
+import type { BacktestResult } from '../services/backtest'
 import CandleChart from '../components/CandleChart.vue'
 import type { PricePoint } from '../types'
 
@@ -196,6 +241,16 @@ const selectedAssetId = ref('')
 const result = ref<ExpertAnalysisResult | null>(null)
 const history = ref<PricePoint[]>([])
 const loading = ref(false)
+const backtestResult = ref<BacktestResult | null>(null)
+
+const runBacktest = () => {
+  backtestResult.value = Backtest.runBreakout(history.value)
+  if (backtestResult.value) {
+    store.logEvent('signal_erzeugt',
+      `Backtest ${result.value?.asset.symbol}: ${backtestResult.value.totalTrades} Trades, ${backtestResult.value.totalR.toFixed(1)}R`,
+      { assetSymbol: result.value?.asset.symbol })
+  }
+}
 
 const runAnalysis = async () => {
   result.value = null

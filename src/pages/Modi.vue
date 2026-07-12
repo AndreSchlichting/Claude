@@ -292,6 +292,9 @@ const refreshScanner = async () => {
       store.logEvent('starke_bewegung', `Scanner: ${r.asset.symbol} bewegt sich ${r.movePercent.toFixed(1)}%`,
         { assetId: r.asset.id, assetSymbol: r.asset.symbol })
     })
+
+    // Preis-Alerts gegen aktuelle Kurse prüfen
+    store.checkPriceAlerts()
   } finally {
     scanning.value = false
   }

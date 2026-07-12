@@ -24,6 +24,28 @@
       />
     </div>
 
+    <!-- Marktampel / Regime-Filter -->
+    <MarketLight />
+
+    <!-- Watchlist -->
+    <div v-if="watchlistAssets.length > 0" class="card">
+      <h2 class="text-lg font-bold mb-4">⭐ Watchlist</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div
+          v-for="asset in watchlistAssets"
+          :key="asset.id"
+          class="p-3 rounded-xl bg-white/40 dark:bg-white/5 flex justify-between items-center cursor-pointer hover:bg-white/60 dark:hover:bg-white/10"
+          @click="navigateToAsset(asset.id)"
+        >
+          <div>
+            <p class="font-bold text-sm">{{ asset.symbol }}</p>
+            <p class="text-xs text-gray-500">{{ asset.name }}</p>
+          </div>
+          <p class="font-bold">{{ formatPrice(asset.currentPrice) }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Active Warnings -->
     <div v-if="store.activeWarnings.length > 0" class="card border-l-4 border-orange-500">
       <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
@@ -77,9 +99,18 @@
             @click="navigateToAsset(asset.id)"
           >
             <div class="flex justify-between items-start">
-              <div>
-                <h3 class="font-bold text-lg">{{ asset.name }}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ asset.symbol }} • {{ asset.assetClass }}</p>
+              <div class="flex items-start gap-2">
+                <button
+                  @click.stop="store.toggleWatchlist(asset.id)"
+                  class="text-lg leading-none mt-0.5"
+                  :title="store.watchlist.includes(asset.id) ? 'Von Watchlist entfernen' : 'Zur Watchlist'"
+                >
+                  {{ store.watchlist.includes(asset.id) ? '⭐' : '☆' }}
+                </button>
+                <div>
+                  <h3 class="font-bold text-lg">{{ asset.name }}</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">{{ asset.symbol }} • {{ asset.assetClass }}</p>
+                </div>
               </div>
               <div class="text-right">
                 <p class="font-bold">{{ formatPrice(asset.currentPrice) }}</p>
@@ -159,6 +190,7 @@ import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import StatCard from '../components/StatCard.vue'
 import PortfolioChart from '../components/PortfolioChart.vue'
+import MarketLight from '../components/MarketLight.vue'
 
 const store = useAppStore()
 const router = useRouter()
@@ -166,6 +198,10 @@ const loading = ref(true)
 
 const allPositions = computed(() => {
   return store.portfolios.flatMap(p => p.positions)
+})
+
+const watchlistAssets = computed(() => {
+  return store.assets.filter(a => store.watchlist.includes(a.id))
 })
 
 const totalPositions = computed(() => {

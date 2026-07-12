@@ -8,6 +8,19 @@ const ALPHA_VANTAGE_BASE = 'https://www.alphavantage.co/query'
 // Cache für API-Aufrufe (um Rate-Limits zu vermeiden)
 const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 Minuten
+const CRYPTO_CACHE_TTL = 30 * 1000 // Krypto: 30 Sekunden (24/7-Markt)
+
+// Binance Public API: echte Krypto-Daten ohne API-Key
+const BINANCE_BASE = 'https://api.binance.com/api/v3'
+const BINANCE_MAP: Record<string, string> = {
+  bitcoin: 'BTCUSDT',
+  ethereum: 'ETHUSDT'
+}
+// Kerzenintervall-Mapping App -> Binance
+const BINANCE_INTERVALS: Record<string, string> = {
+  '1min': '1m', '2min': '3m', '5min': '5m', '10min': '15m',
+  '15min': '15m', '30min': '30m', '60min': '1h', '1d': '1d', '1w': '1w'
+}
 
 // Definierte Assets mit Symbol-Mapping
 const ASSET_REGISTRY: Record<string, Asset> = {
@@ -82,6 +95,76 @@ const ASSET_REGISTRY: Record<string, Asset> = {
     exchange: 'XETRA',
     lastUpdated: new Date(),
     priceHistory: []
+  },
+  'bitcoin': {
+    id: 'bitcoin',
+    name: 'Bitcoin',
+    symbol: 'BTC',
+    assetClass: 'crypto',
+    currentPrice: 0,
+    currency: 'USD',
+    exchange: 'Binance',
+    lastUpdated: new Date(),
+    priceHistory: []
+  },
+  'ethereum': {
+    id: 'ethereum',
+    name: 'Ethereum',
+    symbol: 'ETH',
+    assetClass: 'crypto',
+    currentPrice: 0,
+    currency: 'USD',
+    exchange: 'Binance',
+    lastUpdated: new Date(),
+    priceHistory: []
+  }
+}
+
+/**
+ * Binance Klines -> PricePoints (echte Krypto-Daten, 24/7)
+ */
+async function fetchBinanceKlines(binanceSymbol: string, interval: string, limit: number): Promise<PricePoint[]> {
+  const cacheKey = `bn_klines_${binanceSymbol}_${interval}_${limit}`
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CRYPTO_CACHE_TTL) return cached.data
+
+  try {
+    const response = await axios.get(`${BINANCE_BASE}/klines`, {
+      params: { symbol: binanceSymbol, interval, limit: Math.min(limit, 500) },
+      timeout: 10000
+    })
+    const points: PricePoint[] = (response.data as any[]).map(k => ({
+      timestamp: new Date(k[0]),
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5]),
+      interval
+    }))
+    cache.set(cacheKey, { data: points, timestamp: Date.now() })
+    return points
+  } catch (error) {
+    console.error(`Binance-Fehler für ${binanceSymbol}:`, error)
+    return []
+  }
+}
+
+async function fetchBinancePrice(binanceSymbol: string): Promise<number> {
+  const cacheKey = `bn_price_${binanceSymbol}`
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CRYPTO_CACHE_TTL) return cached.data
+
+  try {
+    const response = await axios.get(`${BINANCE_BASE}/ticker/price`, {
+      params: { symbol: binanceSymbol },
+      timeout: 8000
+    })
+    const price = parseFloat(response.data.price)
+    cache.set(cacheKey, { data: price, timestamp: Date.now() })
+    return price
+  } catch {
+    return 0
   }
 }
 
@@ -185,10 +268,17 @@ export const apiService = {
     )
   },
 
-  // Price History - echte Daten von Alpha Vantage
+  // Price History - echte Daten von Binance (Krypto) bzw. Alpha Vantage (Aktien/ETF)
   async getPriceHistory(assetId: string, interval: string = '1d', limit: number = 100): Promise<PricePoint[]> {
     const asset = ASSET_REGISTRY[assetId]
     if (!asset) return []
+
+    // Krypto: Binance Public API (echt, 24/7, kein Key nötig)
+    if (BINANCE_MAP[assetId]) {
+      const bnInterval = BINANCE_INTERVALS[interval] || '1d'
+      const points = await fetchBinanceKlines(BINANCE_MAP[assetId], bnInterval, limit)
+      if (points.length > 0) return points
+    }
 
     // Intraday-Intervalle (1min-60min) vs. Tagesdaten
     const isIntraday = /min$/.test(interval)
@@ -209,6 +299,12 @@ export const apiService = {
   async getCurrentPrice(assetId: string): Promise<number> {
     const asset = ASSET_REGISTRY[assetId]
     if (!asset) return 0
+
+    // Krypto: Binance Live-Preis
+    if (BINANCE_MAP[assetId]) {
+      const price = await fetchBinancePrice(BINANCE_MAP[assetId])
+      if (price > 0) return price
+    }
 
     const data = await fetchFromAlphaVantage(asset.symbol, 'TIME_SERIES_DAILY')
 

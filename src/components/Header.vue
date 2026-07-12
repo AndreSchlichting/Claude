@@ -21,6 +21,9 @@
             <RouterLink to="/portfolio" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Portfolio
             </RouterLink>
+            <RouterLink to="/journal" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              Journal
+            </RouterLink>
             <RouterLink to="/protokoll" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Protokoll
             </RouterLink>

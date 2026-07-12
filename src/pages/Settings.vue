@@ -232,6 +232,22 @@
       </div>
     </div>
 
+    <!-- Daten-Backup -->
+    <div class="card">
+      <h2 class="text-lg font-bold mb-2">Daten-Backup</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Alle App-Daten (Portfolios, Journal, Protokoll, Einstellungen) als JSON-Datei sichern oder wiederherstellen.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <button @click="exportData" class="btn btn-secondary">💾 Daten exportieren</button>
+        <label class="btn btn-secondary cursor-pointer">
+          📂 Daten importieren
+          <input type="file" accept=".json" @change="importData" class="hidden" />
+        </label>
+      </div>
+      <p v-if="backupMessage" class="mt-3 text-sm font-medium text-green-700 dark:text-green-300">{{ backupMessage }}</p>
+    </div>
+
     <!-- Action Buttons -->
     <div class="flex gap-4">
       <button @click="saveSettings" class="btn btn-primary flex-1">
@@ -269,5 +285,38 @@ const saveSettings = () => {
 
 const resetSettings = () => {
   Object.assign(tempSettings, store.settings)
+}
+
+const backupMessage = ref('')
+
+const exportData = () => {
+  const data = localStorage.getItem('tdl_state_v1') || '{}'
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `trading-lab-backup_${new Date().toISOString().split('T')[0]}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  backupMessage.value = '✓ Backup heruntergeladen'
+  setTimeout(() => { backupMessage.value = '' }, 3000)
+}
+
+const importData = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const text = String(reader.result || '')
+      JSON.parse(text) // Validierung
+      localStorage.setItem('tdl_state_v1', text)
+      backupMessage.value = '✓ Backup importiert - Seite wird neu geladen...'
+      setTimeout(() => location.reload(), 1000)
+    } catch {
+      backupMessage.value = 'Fehler: Datei ist kein gültiges Backup'
+    }
+  }
+  reader.readAsText(file)
 }
 </script>

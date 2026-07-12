@@ -171,6 +171,9 @@
       <p class="text-gray-600 dark:text-gray-400">Wählen Sie ein Asset aus, um Daytrading-Signale zu sehen</p>
     </div>
 
+    <!-- Positionsgrößen-Rechner -->
+    <PositionSizeCalculator />
+
     <!-- Market Stats -->
     <div v-if="selectedAssetId && dayStats" class="card">
       <h2 class="text-lg font-bold mb-4">Tagesstatistiken</h2>
@@ -204,6 +207,7 @@ import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import { DaytradingEngine } from '../services/daytradingEngine'
 import { WarningEngine } from '../services/warningEngine'
+import PositionSizeCalculator from '../components/PositionSizeCalculator.vue'
 import type { IntrabarSignal, DaytradesStats } from '../services/daytradingEngine'
 
 const store = useAppStore()
@@ -328,6 +332,8 @@ const loadDaytradesignals = async () => {
         volatility: ((high - low) / history[0].open) * 100
       }
     }
+    // Preis-Alerts prüfen
+    store.checkPriceAlerts()
   } catch (error) {
     console.error('Fehler beim Laden von Daytrading-Signalen:', error)
   } finally {

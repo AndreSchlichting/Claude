@@ -37,6 +37,38 @@
       :title="`${asset.symbol} - Kerzenchart (${store.activeCurrency})`"
     />
 
+    <!-- Preis-Alerts -->
+    <div class="card">
+      <h2 class="text-lg font-bold mb-3">🔔 Preis-Alerts</h2>
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Alarm-Level</label>
+          <input v-model.number="newAlertPrice" type="number" step="0.01" class="input-field w-32" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Richtung</label>
+          <select v-model="newAlertDirection" class="input-field">
+            <option value="ueber">Kurs steigt über</option>
+            <option value="unter">Kurs fällt unter</option>
+          </select>
+        </div>
+        <button @click="addAlert" :disabled="!newAlertPrice" class="btn btn-primary disabled:opacity-50">
+          Alert setzen
+        </button>
+      </div>
+      <div v-if="assetAlerts.length > 0" class="space-y-2">
+        <div v-for="alert in assetAlerts" :key="alert.id"
+          class="flex justify-between items-center p-2.5 rounded-xl bg-white/40 dark:bg-white/5 text-sm">
+          <span :class="alert.active ? '' : 'line-through opacity-50'">
+            {{ alert.direction === 'ueber' ? '↗ über' : '↘ unter' }} {{ alert.price.toFixed(2) }}
+            <span v-if="!alert.active" class="text-xs text-orange-600 ml-2">ausgelöst</span>
+          </span>
+          <button @click="store.removePriceAlert(alert.id)" class="text-gray-400 hover:text-red-500">✕</button>
+        </div>
+      </div>
+      <p v-else class="text-sm text-gray-500">Keine Alerts gesetzt. Alerts werden beim Scannen und Laden geprüft.</p>
+    </div>
+
     <!-- Current Analysis -->
     <div v-if="currentAnalysis" class="card border-l-4" :class="[
       currentAnalysis.warningLevel === 'green' ? 'border-green-500' :
@@ -129,6 +161,26 @@ const store = useAppStore()
 
 const exchangeRate = ref(1.1)
 const loading = ref(true)
+const newAlertPrice = ref(0)
+const newAlertDirection = ref<'ueber' | 'unter'>('ueber')
+
+const assetAlerts = computed(() => store.priceAlerts.filter(a => a.assetId === assetId))
+
+const addAlert = () => {
+  if (!newAlertPrice.value || !asset.value) return
+  store.addPriceAlert({
+    id: `alert_${Date.now()}`,
+    assetId: assetId,
+    assetSymbol: asset.value.symbol,
+    price: newAlertPrice.value,
+    direction: newAlertDirection.value,
+    active: true,
+    createdAt: new Date()
+  })
+  store.logEvent('signal_erzeugt', `Preis-Alert gesetzt: ${asset.value.symbol} ${newAlertDirection.value} ${newAlertPrice.value}`,
+    { assetId, assetSymbol: asset.value.symbol })
+  newAlertPrice.value = 0
+}
 
 const assetId = route.params.id as string
 

@@ -156,6 +156,37 @@ export interface EventLogEntry {
   markedAsFalseAlarm?: boolean
 }
 
+// Trade-Journal: brutale Ehrlichkeit gegenüber dem eigenen Verhalten
+export type TradeEmotion = 'ruhig' | 'neutral' | 'gierig' | 'aengstlich' | 'fomo' | 'rache' | 'euphorie'
+
+export interface JournalEntry {
+  id: string
+  createdAt: Date
+  closedAt?: Date
+  assetSymbol: string
+  direction: 'long' | 'short'
+  entryPrice: number
+  exitPrice?: number
+  quantity: number
+  thesis: string
+  emotion: TradeEmotion
+  planFollowed?: boolean
+  lessons?: string
+  status: 'offen' | 'geschlossen'
+  netResult?: number
+}
+
+// Preis-Alerts: Alarm-Level je Asset
+export interface PriceAlert {
+  id: string
+  assetId: string
+  assetSymbol: string
+  price: number
+  direction: 'ueber' | 'unter'
+  active: boolean
+  createdAt: Date
+}
+
 export interface TaxAssumption {
   country: string
   capitalGainsTax: number

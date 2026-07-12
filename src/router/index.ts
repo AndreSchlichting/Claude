@@ -7,6 +7,7 @@ import Daytrading from '../pages/Daytrading.vue'
 import EventLog from '../pages/EventLog.vue'
 import Modi from '../pages/Modi.vue'
 import AnalysisTools from '../pages/AnalysisTools.vue'
+import Journal from '../pages/Journal.vue'
 import Settings from '../pages/Settings.vue'
 
 const routes = [
@@ -49,6 +50,11 @@ const routes = [
     path: '/analyse',
     name: 'AnalysisTools',
     component: AnalysisTools
+  },
+  {
+    path: '/journal',
+    name: 'Journal',
+    component: Journal
   },
   {
     path: '/settings',
