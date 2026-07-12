@@ -1,16 +1,22 @@
 <template>
-  <header class="bg-white dark:bg-gray-800 shadow">
+  <header class="glass-header">
     <div class="container mx-auto px-4 py-4">
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center flex-wrap gap-3">
         <div class="flex items-center gap-4">
           <h1 class="text-2xl font-bold text-primary">Trading Decision Lab</h1>
-          <span class="text-sm text-gray-600 dark:text-gray-400">Brutal erfolgreich</span>
-          <nav class="hidden md:flex gap-4 ml-8 border-l border-gray-300 dark:border-gray-600 pl-8">
+          <span class="hidden lg:inline text-sm text-gray-600 dark:text-gray-400">Brutal erfolgreich</span>
+          <nav class="hidden md:flex gap-4 ml-4 border-l border-white/50 dark:border-white/10 pl-6">
             <RouterLink to="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Dashboard
             </RouterLink>
             <RouterLink to="/daytrading" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Daytrading
+            </RouterLink>
+            <RouterLink to="/modi" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              Modi
+            </RouterLink>
+            <RouterLink to="/analyse" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              Analyse
             </RouterLink>
             <RouterLink to="/portfolio" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Portfolio
@@ -21,46 +27,42 @@
           </nav>
         </div>
 
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-4">
+          <!-- Risk-Off Badge -->
+          <span v-if="store.settings.riskOffMode"
+            class="px-2.5 py-1 rounded-lg bg-red-500/90 text-white text-xs font-bold warn-blink">
+            RISK-OFF
+          </span>
+
           <!-- Warnings Badge -->
           <div v-if="store.activeWarnings.length > 0" class="relative">
-            <button class="relative p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-gray-700 rounded-lg">
-              <AlertTriangle :size="20" />
-              <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            <RouterLink to="/protokoll" class="relative p-2 text-orange-600 hover:bg-white/30 dark:hover:bg-white/10 rounded-xl inline-flex">
+              <AlertTriangle :size="20" :class="hasCritical ? 'warn-blink text-red-600' : ''" />
+              <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {{ store.activeWarnings.length }}
               </span>
-            </button>
+            </RouterLink>
           </div>
 
           <!-- Currency Selector -->
-          <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-6">
+          <div class="flex items-center gap-1.5 border-l border-white/50 dark:border-white/10 pl-4">
             <button
               v-for="currency in ['EUR', 'USD']"
               :key="currency"
               @click="store.setCurrency(currency as any)"
-              :class="[
-                'px-3 py-1 rounded font-medium text-sm transition-colors',
-                store.activeCurrency === currency
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 opacity-50 hover:opacity-75'
-              ]"
+              :class="['glass-chip', store.activeCurrency === currency ? 'glass-chip-active' : 'glass-chip-inactive']"
             >
               {{ currency }}
             </button>
           </div>
 
           <!-- Language Selector -->
-          <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-6">
+          <div class="flex items-center gap-1.5 border-l border-white/50 dark:border-white/10 pl-4">
             <button
               v-for="lang in ['DE', 'EN']"
               :key="lang"
               @click="store.setLanguage((lang.toLowerCase() as any))"
-              :class="[
-                'px-3 py-1 rounded font-medium text-sm transition-colors',
-                (store.activeLanguage === lang.toLowerCase())
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 opacity-50 hover:opacity-75'
-              ]"
+              :class="['glass-chip', store.activeLanguage === lang.toLowerCase() ? 'glass-chip-active' : 'glass-chip-inactive']"
             >
               {{ lang }}
             </button>
@@ -74,7 +76,7 @@
       </div>
 
       <!-- Info Bar -->
-      <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-4 gap-4 text-sm">
+      <div class="mt-4 pt-4 border-t border-white/40 dark:border-white/10 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div>
           <span class="text-gray-600 dark:text-gray-400">Portfolio Wert</span>
           <p class="font-bold text-lg">{{ formatCurrency(store.totalPortfolioValue) }}</p>
@@ -110,8 +112,11 @@ const totalPositions = computed(() => {
   return store.portfolios.reduce((sum, p) => sum + p.positions.length, 0)
 })
 
+const hasCritical = computed(() => {
+  return store.activeWarnings.some(w => w.level === 'red' || w.level === 'black')
+})
+
 const formatCurrency = (value: number) => {
-  const symbol = store.activeCurrency === 'EUR' ? '€' : '$'
   return new Intl.NumberFormat('de-DE', {
     style: 'currency',
     currency: store.activeCurrency,

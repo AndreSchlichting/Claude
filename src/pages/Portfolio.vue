@@ -47,6 +47,7 @@
               <th class="px-4 py-3 text-right">Aktueller Preis</th>
               <th class="px-4 py-3 text-right">G/V</th>
               <th class="px-4 py-3 text-right">G/V %</th>
+              <th class="px-4 py-3 text-left">Steuerstatus</th>
               <th class="px-4 py-3 text-center">Aktion</th>
             </tr>
           </thead>
@@ -73,6 +74,11 @@
               <td :class="['px-4 py-3 text-right font-medium', getGLClass(position)]">
                 {{ calculateGLPercent(position).toFixed(2) }}%
               </td>
+              <td class="px-4 py-3 text-left">
+                <span class="text-xs px-2 py-0.5 rounded-lg" :class="taxStatusClass(position)">
+                  {{ taxStatus(position) }}
+                </span>
+              </td>
               <td class="px-4 py-3 text-center">
                 <button
                   @click="sellPosition(position.id)"
@@ -88,6 +94,17 @@
       <div v-else class="text-center py-8 text-gray-600 dark:text-gray-400">
         <p>Keine Positionen in diesem Portfolio</p>
       </div>
+    </div>
+
+    <!-- Steuerreport-Export (§123.5) -->
+    <div class="card flex justify-between items-center flex-wrap gap-3">
+      <div>
+        <h2 class="text-lg font-bold">Steuerreport</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Export aller Positionen mit geschätzter Steuer (CSV). Keine Steuerberatung - nur Näherungswerte.
+        </p>
+      </div>
+      <button @click="exportTaxReport" class="btn btn-primary">📄 Steuerreport exportieren</button>
     </div>
 
     <!-- Depotübertrag (§121) -->
@@ -163,6 +180,7 @@ import { useAppStore } from '../stores'
 import StatCard from '../components/StatCard.vue'
 import SellSimulation from '../components/SellSimulation.vue'
 import DepotImport from '../components/DepotImport.vue'
+import { NetResultEngine } from '../services/netResultEngine'
 import type { Position } from '../types'
 
 const store = useAppStore()
@@ -256,5 +274,69 @@ const sellPosition = (positionId: string) => {
   if (confirm('Position wirklich verkaufen?')) {
     // Implementation for selling
   }
+}
+
+/**
+ * Steuerstatus je Position (§120.5 / §123.4)
+ */
+const taxStatus = (position: Position): string => {
+  const gain = calculateGL(position)
+  const holdingDays = Math.floor((Date.now() - new Date(position.buyDate).getTime()) / 86400000)
+
+  if (position.asset.assetClass === 'crypto') {
+    if (holdingDays >= store.settings.taxAssumption.cryptoHoldingPeriod) {
+      return 'steuerfrei möglich (Haltedauer)'
+    }
+    return gain > 0 ? `steuerpflichtig geschätzt (noch ${store.settings.taxAssumption.cryptoHoldingPeriod - holdingDays} Tage)` : 'steuerlich offen'
+  }
+  if (gain <= 0) return 'steuerlich offen'
+  return 'steuerpflichtig geschätzt'
+}
+
+const taxStatusClass = (position: Position): string => {
+  const status = taxStatus(position)
+  if (status.startsWith('steuerfrei')) return 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200'
+  if (status.startsWith('steuerpflichtig')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200'
+  return 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300'
+}
+
+/**
+ * Steuerreport-Export als CSV (§123.5)
+ */
+const exportTaxReport = () => {
+  const rows = [
+    ['Asset', 'Symbol', 'Assetklasse', 'Portfolio', 'Kaufdatum', 'Haltedauer (Tage)', 'Stückzahl',
+     'Kaufkurs', 'Aktueller Kurs', 'Kaufwert', 'Aktueller Wert', 'Unrealisiert G/V',
+     'Steuerstatus', 'Geschätzte Steuer bei Verkauf'].join(';')
+  ]
+
+  store.portfolios.forEach(pf => {
+    pf.positions.forEach(pos => {
+      const gain = calculateGL(pos)
+      const result = NetResultEngine.calculateNetResult(
+        pos, pos.asset.currentPrice, store.settings.feeProfile, store.settings.taxAssumption, 'EUR'
+      )
+      const holdingDays = Math.floor((Date.now() - new Date(pos.buyDate).getTime()) / 86400000)
+      rows.push([
+        pos.asset.name, pos.asset.symbol, pos.asset.assetClass, pf.name,
+        new Date(pos.buyDate).toLocaleDateString('de-DE'), holdingDays, pos.quantity,
+        pos.buyPrice.toFixed(2).replace('.', ','), pos.asset.currentPrice.toFixed(2).replace('.', ','),
+        (pos.buyPrice * pos.quantity).toFixed(2).replace('.', ','),
+        (pos.asset.currentPrice * pos.quantity).toFixed(2).replace('.', ','),
+        gain.toFixed(2).replace('.', ','),
+        taxStatus(pos),
+        result.estimatedTax.toFixed(2).replace('.', ',')
+      ].join(';'))
+    })
+  })
+
+  const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `steuerreport_${new Date().toISOString().split('T')[0]}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  store.logEvent('steuerereignis', 'Steuerreport als CSV exportiert')
 }
 </script>

@@ -88,8 +88,8 @@ const ASSET_REGISTRY: Record<string, Asset> = {
 /**
  * Lädt echte Kursdaten von Alpha Vantage
  */
-async function fetchFromAlphaVantage(symbol: string, dataType: string = 'TIME_SERIES_DAILY') {
-  const cacheKey = `av_${symbol}_${dataType}`
+async function fetchFromAlphaVantage(symbol: string, dataType: string = 'TIME_SERIES_DAILY', extraParams: Record<string, string> = {}) {
+  const cacheKey = `av_${symbol}_${dataType}_${JSON.stringify(extraParams)}`
 
   // Check cache
   if (cache.has(cacheKey)) {
@@ -105,7 +105,8 @@ async function fetchFromAlphaVantage(symbol: string, dataType: string = 'TIME_SE
         function: dataType,
         symbol: symbol,
         apikey: ALPHA_VANTAGE_KEY,
-        outputsize: 'compact'
+        outputsize: 'compact',
+        ...extraParams
       },
       timeout: 10000
     })
@@ -127,7 +128,9 @@ async function fetchFromAlphaVantage(symbol: string, dataType: string = 'TIME_SE
  */
 function parseAlphaVantageData(data: any, symbol: string): PricePoint[] {
   const points: PricePoint[] = []
-  const timeSeries = data['Time Series (Daily)'] || data['Time Series (5min)'] || {}
+  // Findet den Time-Series-Schlüssel unabhängig vom Intervall
+  const seriesKey = Object.keys(data).find(k => k.startsWith('Time Series')) || ''
+  const timeSeries = data[seriesKey] || {}
 
   Object.entries(timeSeries).forEach(([timestamp, values]: [string, any]) => {
     points.push({
@@ -187,8 +190,11 @@ export const apiService = {
     const asset = ASSET_REGISTRY[assetId]
     if (!asset) return []
 
-    const dataType = interval === '5min' ? 'TIME_SERIES_INTRADAY' : 'TIME_SERIES_DAILY'
-    const data = await fetchFromAlphaVantage(asset.symbol, dataType)
+    // Intraday-Intervalle (1min-60min) vs. Tagesdaten
+    const isIntraday = /min$/.test(interval)
+    const dataType = isIntraday ? 'TIME_SERIES_INTRADAY' : 'TIME_SERIES_DAILY'
+    const extraParams: Record<string, string> = isIntraday ? { interval } : {}
+    const data = await fetchFromAlphaVantage(asset.symbol, dataType, extraParams)
 
     if (!data) {
       // Fallback zu Demo-Daten wenn API nicht verfügbar

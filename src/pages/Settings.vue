@@ -168,6 +168,48 @@
           </label>
         </div>
 
+        <!-- Konfigurierbare Warnschwellen (§129.3) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label class="block text-sm font-medium mb-2">Kursbewegung-Schwelle (%)</label>
+            <input v-model.number="tempSettings.warningThresholds.strongMovePercent" type="number" step="0.5" min="0.5" class="input-field w-full" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Volumen-Spike (x-fach)</label>
+            <input v-model.number="tempSettings.warningThresholds.volumeSpikeRatio" type="number" step="0.1" min="1" class="input-field w-full" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Stop-Nähe-Warnung (%)</label>
+            <input v-model.number="tempSettings.warningThresholds.stopProximityPercent" type="number" step="0.1" min="0.1" class="input-field w-full" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Gap-Schwelle (%)</label>
+            <input v-model.number="tempSettings.warningThresholds.gapPercent" type="number" step="0.5" min="0.5" class="input-field w-full" />
+          </div>
+        </div>
+
+        <!-- BaFin-Watchlist (§119.3) -->
+        <div class="pt-2">
+          <label class="block text-sm font-medium mb-2">BaFin-/Behörden-Watchlist (ein Symbol pro Zeile)</label>
+          <textarea
+            v-model="bafinListText"
+            rows="3"
+            placeholder="Symbole von Assets mit Behördenwarnung, z.B. aus bafin.de → Verbraucher → Warnungen"
+            class="input-field w-full text-sm"
+          ></textarea>
+          <p class="text-xs text-gray-500 mt-1">
+            Assets auf dieser Liste erhalten Warnstufe SCHWARZ (Scam-Verdacht) und werden für Live-Trading gesperrt.
+            Quelle: <span class="underline">bafin.de → Verbraucher → Warnungen &amp; Meldungen</span>
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <input id="learning-hints" v-model="tempSettings.learningHints" type="checkbox" class="rounded" />
+          <label for="learning-hints" class="text-sm font-medium">
+            Lernhinweise anzeigen (Wissens- und Transparenzmodus §128)
+          </label>
+        </div>
+
         <div v-if="tempSettings.acousticWarningsEnabled">
           <label class="block text-sm font-medium mb-2">Lautstärke</label>
           <input
@@ -203,20 +245,23 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useAppStore } from '../stores'
 import { WarningEngine } from '../services/warningEngine'
 import type { Settings } from '../types'
 
 const store = useAppStore()
 
-const tempSettings = reactive<Settings>({ ...store.settings })
+const tempSettings = reactive<Settings>(JSON.parse(JSON.stringify(store.settings)))
+const bafinListText = ref((store.settings.bafinWatchlist || []).join('\n'))
 
 const playTestSound = () => {
   WarningEngine.playTestSound(tempSettings.soundVolume)
 }
 
 const saveSettings = () => {
+  tempSettings.bafinWatchlist = bafinListText.value
+    .split('\n').map(s => s.trim().toUpperCase()).filter(Boolean)
   store.updateSettings(tempSettings)
   store.logEvent('modus_geaendert', `Einstellungen gespeichert (Brutal-Modus: ${tempSettings.brutalSuccessModeEnabled ? 'AN' : 'AUS'})`)
   alert('Einstellungen gespeichert!')

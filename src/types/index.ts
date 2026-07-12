@@ -177,6 +177,15 @@ export interface FeeProfile {
   foreignCurrencyFee: number
 }
 
+// Konfigurierbare Warnschwellen (§129.3)
+export interface WarningThresholds {
+  strongMovePercent: number
+  volumeSpikeRatio: number
+  stopProximityPercent: number
+  gapPercent: number
+  staleDataMinutes: number
+}
+
 export interface Settings {
   language: 'de' | 'en'
   currency: Currency
@@ -191,6 +200,10 @@ export interface Settings {
   maxOpenTrades: number
   brutalSuccessModeEnabled: boolean
   acousticWarningsEnabled: boolean
+  riskOffMode: boolean
+  learningHints: boolean
+  warningThresholds: WarningThresholds
+  bafinWatchlist: string[]
   feeProfile: FeeProfile
   taxAssumption: TaxAssumption
   soundVolume: number

@@ -288,8 +288,9 @@ const loadDaytradesignals = async () => {
       })
 
       // Akutwarnsystem (§125): Asset auf Warnereignisse prüfen
+      // Schwellen kommen aus den Einstellungen (§129.3)
       const allPositions = store.portfolios.flatMap(p => p.positions)
-      const acuteWarnings = WarningEngine.checkAsset(asset, history, allPositions)
+      const acuteWarnings = WarningEngine.checkAsset(asset, history, allPositions, store.settings.warningThresholds)
       acuteWarnings.forEach(w => {
         store.addWarning({
           id: w.id, timestamp: w.timestamp, assetId: w.assetId,

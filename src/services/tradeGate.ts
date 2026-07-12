@@ -82,6 +82,9 @@ export class TradeGate {
     if (context.openTradesCount >= settings.maxOpenTrades) {
       blockedReasons.push(`Maximale Anzahl offener Trades erreicht (${settings.maxOpenTrades})`)
     }
+    if (settings.riskOffMode) {
+      blockedReasons.push('Risk-Off-Modus aktiv: keine neuen Trades, Kapitalschutz hat Vorrang (§142.6)')
+    }
 
     // Brutal-erfolgreich-Modus: strengere Regeln (§127.2)
     if (brutal) {
@@ -136,6 +139,17 @@ export class TradeGate {
    * Warnstufen: grün / gelb / orange / rot / schwarz.
    * "Scam bestätigt" nur mit belastbarer Quelle (z.B. BaFin-Warnung).
    */
+  /**
+   * BaFin-Watchlist-Abgleich (§119.3): Assets auf der vom Nutzer
+   * gepflegten Behörden-Warnliste erhalten Warnstufe SCHWARZ.
+   */
+  static checkBafinWatchlist(asset: Asset, watchlist: string[]): boolean {
+    if (!watchlist || watchlist.length === 0) return false
+    const symbol = asset.symbol.toUpperCase()
+    const isin = (asset.isin || '').toUpperCase()
+    return watchlist.some(entry => entry === symbol || (isin && entry === isin))
+  }
+
   static assessAssetRisk(asset: Asset, metrics: {
     avgDailyVolume?: number      // Stück/Tag
     spreadPercent?: number

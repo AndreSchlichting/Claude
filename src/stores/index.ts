@@ -1,6 +1,16 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType } from '../types'
+
+const STORAGE_KEY = 'tdl_state_v1'
+
+// JSON-Reviver: ISO-Datumsstrings zurück in Date-Objekte wandeln
+const dateReviver = (_key: string, value: any) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+    return new Date(value)
+  }
+  return value
+}
 
 const emptyPortfolio = (id: string, name: string, type: Portfolio['type']): Portfolio => ({
   id, name, type,
@@ -42,6 +52,16 @@ export const useAppStore = defineStore('app', () => {
     maxOpenTrades: 5,
     brutalSuccessModeEnabled: true,
     acousticWarningsEnabled: false,
+    riskOffMode: false,
+    learningHints: true,
+    warningThresholds: {
+      strongMovePercent: 3.0,
+      volumeSpikeRatio: 2.4,
+      stopProximityPercent: 1.5,
+      gapPercent: 2.0,
+      staleDataMinutes: 30
+    },
+    bafinWatchlist: [],
     soundVolume: 50,
     dataRefreshInterval: 30000,
     feeProfile: {
@@ -152,6 +172,46 @@ export const useAppStore = defineStore('app', () => {
     const event = eventLog.value.find(e => e.id === eventId)
     if (event) event.markedAsFalseAlarm = true
   }
+
+  // --- Persistenz: Zustand überlebt Neuladen der Seite ---
+  const loadPersisted = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const data = JSON.parse(raw, dateReviver)
+      if (data.portfolios) portfolios.value = data.portfolios
+      if (data.eventLog) eventLog.value = data.eventLog
+      if (data.transactions) transactions.value = data.transactions
+      if (data.analyses) analyses.value = data.analyses
+      if (data.warningEvents) warningEvents.value = data.warningEvents
+      if (data.settings) Object.assign(settings.value, data.settings)
+      if (data.selectedCurrency) selectedCurrency.value = data.selectedCurrency
+      if (data.selectedLanguage) selectedLanguage.value = data.selectedLanguage
+    } catch (e) {
+      console.warn('Persistenz: Laden fehlgeschlagen', e)
+    }
+  }
+
+  const persist = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        portfolios: portfolios.value,
+        eventLog: eventLog.value.slice(0, 300),
+        transactions: transactions.value,
+        analyses: analyses.value.slice(0, 100),
+        warningEvents: warningEvents.value.slice(-100),
+        settings: settings.value,
+        selectedCurrency: selectedCurrency.value,
+        selectedLanguage: selectedLanguage.value
+      }))
+    } catch (e) {
+      console.warn('Persistenz: Speichern fehlgeschlagen', e)
+    }
+  }
+
+  loadPersisted()
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage],
+    persist, { deep: true })
 
   return {
     // State

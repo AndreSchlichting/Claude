@@ -7,6 +7,36 @@
       </p>
     </div>
 
+    <!-- Wochenreview (§126.4) -->
+    <div class="card">
+      <h2 class="text-lg font-bold mb-4">Wochenreview (letzte 7 Tage)</h2>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+          <p class="text-xs text-gray-500">Signale erzeugt</p>
+          <p class="font-bold text-xl">{{ weekStats.signalsCreated }}</p>
+        </div>
+        <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+          <p class="text-xs text-gray-500">Signale blockiert</p>
+          <p class="font-bold text-xl">{{ weekStats.signalsBlocked }}</p>
+        </div>
+        <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+          <p class="text-xs text-gray-500">Warnungen</p>
+          <p class="font-bold text-xl text-orange-600">{{ weekStats.warnings }}</p>
+        </div>
+        <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+          <p class="text-xs text-gray-500">Trades</p>
+          <p class="font-bold text-xl">{{ weekStats.trades }}</p>
+        </div>
+        <div class="p-3 rounded-xl bg-white/40 dark:bg-white/5">
+          <p class="text-xs text-gray-500">Fehlalarm-Quote</p>
+          <p class="font-bold text-xl">{{ weekStats.falseAlarmRate }}%</p>
+        </div>
+      </div>
+      <p v-if="weekStats.signalsBlocked > weekStats.signalsCreated" class="text-xs text-gray-600 dark:text-gray-400 mt-3">
+        💡 Mehr Signale blockiert als erzeugt - das System filtert hart. Das ist gewollt: Nicht-Handeln ist eine legitime Entscheidung.
+      </p>
+    </div>
+
     <!-- Filter -->
     <div class="card grid grid-cols-1 md:grid-cols-3 gap-4">
       <select v-model="filterType" class="input-field">
@@ -91,6 +121,20 @@ const eventTypeLabels: Record<string, string> = {
   testposition_angelegt: 'Testposition angelegt',
   modus_geaendert: 'Modus geändert'
 }
+
+const weekStats = computed(() => {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const recent = store.eventLog.filter(e => new Date(e.timestamp).getTime() >= weekAgo)
+  const warnings = recent.filter(e => ['warnung_ausgeloest', 'starke_bewegung', 'scam_warnung', 'datenfehler'].includes(e.type))
+  const falseAlarms = warnings.filter(e => e.markedAsFalseAlarm)
+  return {
+    signalsCreated: recent.filter(e => e.type === 'signal_erzeugt').length,
+    signalsBlocked: recent.filter(e => e.type === 'signal_blockiert').length,
+    warnings: warnings.length,
+    trades: recent.filter(e => ['trade_ausgefuehrt', 'testposition_angelegt'].includes(e.type)).length,
+    falseAlarmRate: warnings.length ? Math.round((falseAlarms.length / warnings.length) * 100) : 0
+  }
+})
 
 const filteredEvents = computed(() => {
   return store.eventLog.filter(e => {

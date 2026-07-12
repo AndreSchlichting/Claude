@@ -84,6 +84,19 @@
       <button @click="resetForm" class="btn btn-secondary">Zurücksetzen</button>
     </div>
 
+    <!-- CSV-Import (§121.2) -->
+    <div class="mt-6 pt-4 border-t border-white/40 dark:border-white/10">
+      <p class="font-bold text-sm mb-2">CSV-Import</p>
+      <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+        Format: <code class="bg-white/40 dark:bg-white/10 px-1 rounded">Symbol;Kaufdatum;Kaufkurs;Stückzahl;Gebühren;Währung</code>
+        (eine Position pro Zeile, Datum als JJJJ-MM-TT)
+      </p>
+      <input type="file" accept=".csv,.txt" @change="handleCsvUpload" class="text-sm" />
+      <p v-if="csvResult" class="mt-2 text-sm" :class="csvResult.includes('Fehler') ? 'text-red-600' : 'text-green-700 dark:text-green-300'">
+        {{ csvResult }}
+      </p>
+    </div>
+
     <p v-if="successMessage" class="mt-3 text-sm text-green-700 dark:text-green-300 font-medium">
       ✓ {{ successMessage }}
     </p>
@@ -208,5 +221,60 @@ const resetForm = () => {
     fees: 1, currency: 'EUR', exchangeRate: 1,
     depotSource: 'Trade Republic', portfolioType: 'real'
   }
+}
+
+const csvResult = ref('')
+
+/**
+ * CSV-Import (§121.2): Symbol;Datum;Kurs;Stückzahl;Gebühren;Währung
+ */
+const handleCsvUpload = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    const text = String(reader.result || '')
+    const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.toLowerCase().startsWith('symbol'))
+    let imported = 0
+    let failed = 0
+
+    const portfolio = store.portfolios.find(p => p.type === form.value.portfolioType)
+    if (!portfolio) return
+
+    lines.forEach(line => {
+      const parts = line.split(/[;,]/).map(p => p.trim())
+      if (parts.length < 4) { failed++; return }
+
+      const [symbol, date, price, qty, fees, currency] = parts
+      const asset = store.assets.find(a => a.symbol.toUpperCase() === symbol.toUpperCase())
+      const buyPrice = parseFloat(price.replace(',', '.'))
+      const quantity = parseFloat(qty.replace(',', '.'))
+
+      if (!asset || !buyPrice || !quantity) { failed++; return }
+
+      store.addPosition(portfolio.id, {
+        id: `pos_csv_${Date.now()}_${imported}`,
+        asset, quantity, buyPrice,
+        buyDate: new Date(date),
+        buyFees: parseFloat((fees || '1').replace(',', '.')) || 1,
+        currency: (currency === 'USD' ? 'USD' : 'EUR'),
+        portfolioType: form.value.portfolioType,
+        entryThesis: 'CSV-Import',
+        stopLoss: buyPrice * 0.9,
+        profitTarget: buyPrice * 1.2,
+        depotSource: 'CSV-Import',
+        transferDate: new Date()
+      })
+      imported++
+    })
+
+    csvResult.value = failed > 0
+      ? `${imported} Positionen importiert, ${failed} Zeilen mit Fehler übersprungen`
+      : `✓ ${imported} Positionen erfolgreich importiert`
+    store.logEvent('trade_ausgefuehrt', `CSV-Import: ${imported} Positionen übernommen`,
+      { detail: failed > 0 ? `${failed} fehlerhafte Zeilen` : undefined })
+  }
+  reader.readAsText(file)
 }
 </script>

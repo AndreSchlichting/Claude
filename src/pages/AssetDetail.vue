@@ -30,11 +30,11 @@
       </div>
     </div>
 
-    <!-- Price Chart -->
-    <PriceChart
-      v-if="asset?.priceHistory"
+    <!-- Kerzenchart (rot/grün) -->
+    <CandleChart
+      v-if="asset?.priceHistory && asset.priceHistory.length > 0"
       :priceHistory="asset.priceHistory"
-      :symbol="asset.symbol"
+      :title="`${asset.symbol} - Kerzenchart (${store.activeCurrency})`"
     />
 
     <!-- Current Analysis -->
@@ -122,7 +122,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
-import PriceChart from '../components/PriceChart.vue'
+import CandleChart from '../components/CandleChart.vue'
 
 const route = useRoute()
 const store = useAppStore()
