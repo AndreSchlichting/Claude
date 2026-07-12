@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 title Trading Decision Lab - Desktop
 cd /d "%~dp0"
 
@@ -8,42 +7,46 @@ echo   Trading Decision Lab - Desktop-Version
 echo ============================================
 echo.
 
-set "NODE_OK="
-node --version >nul 2>nul && set "NODE_OK=1"
-if not defined NODE_OK if exist "%ProgramFiles%\nodejs\node.exe" (
-    set "PATH=%ProgramFiles%\nodejs;%PATH%"
-    set "NODE_OK=1"
-)
-if not defined NODE_OK if exist "%LocalAppData%\Programs\nodejs\node.exe" (
-    set "PATH=%LocalAppData%\Programs\nodejs;%PATH%"
-    set "NODE_OK=1"
-)
-if not defined NODE_OK if exist "%~dp0runtime\node\node.exe" (
-    set "PATH=%~dp0runtime\node;%PATH%"
-    set "NODE_OK=1"
-)
-if not defined NODE_OK (
-    echo Node.js nicht gefunden. Bitte zuerst Start.bat ausfuehren -
-    echo sie richtet Node.js automatisch ein.
-    pause
-    exit /b 1
-)
+node --version >nul 2>nul
+if not errorlevel 1 goto node_ok
 
-if not exist node_modules (
-    echo Erste Einrichtung: Abhaengigkeiten werden installiert...
-    call npm install
-    if errorlevel 1 (
-        echo [FEHLER] Installation fehlgeschlagen.
-        pause
-        exit /b 1
-    )
-)
+if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
+node --version >nul 2>nul
+if not errorlevel 1 goto node_ok
 
-if not exist dist (
-    echo App wird gebaut...
-    call npm run build
-)
+if exist "%LocalAppData%\Programs\nodejs\node.exe" set "PATH=%LocalAppData%\Programs\nodejs;%PATH%"
+node --version >nul 2>nul
+if not errorlevel 1 goto node_ok
 
+if exist "%~dp0runtime\node\node.exe" set "PATH=%~dp0runtime\node;%PATH%"
+node --version >nul 2>nul
+if not errorlevel 1 goto node_ok
+
+echo Node.js nicht gefunden.
+echo Bitte zuerst Start.bat ausfuehren - sie richtet Node.js
+echo automatisch ein. Danach diese Datei erneut starten.
+echo.
+pause
+exit /b 1
+
+:node_ok
+if exist node_modules goto deps_ok
+echo Erste Einrichtung: Abhaengigkeiten werden installiert...
+call npm install
+if errorlevel 1 goto install_failed
+
+:deps_ok
+if exist dist goto build_ok
+echo App wird gebaut...
+call npm run build
+
+:build_ok
 echo Starte Desktop-App...
 call npm run desktop
 pause
+exit /b 0
+
+:install_failed
+echo [FEHLER] Installation fehlgeschlagen.
+pause
+exit /b 1
