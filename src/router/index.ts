@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import Dashboard from '../pages/Dashboard.vue'
 import AssetDetail from '../pages/AssetDetail.vue'
 import Portfolio from '../pages/Portfolio.vue'
@@ -75,8 +75,14 @@ const routes = [
   }
 ]
 
+// Hybrid-Erkennung: In Electron (file://) und Capacitor (Android)
+// funktioniert nur Hash-History; im Web bleibt die saubere URL-History.
+const isHybridShell = window.location.protocol === 'file:' ||
+  window.location.protocol === 'capacitor:' ||
+  typeof (window as any).Capacitor !== 'undefined'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: isHybridShell ? createWebHashHistory() : createWebHistory(),
   routes
 })
 
