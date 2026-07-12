@@ -177,7 +177,15 @@
             max="100"
             class="w-full"
           />
-          <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ tempSettings.soundVolume }}%</p>
+          <div class="flex justify-between items-center mt-1">
+            <p class="text-xs text-gray-600 dark:text-gray-400">{{ tempSettings.soundVolume }}%</p>
+            <button @click="playTestSound" class="text-xs text-primary font-medium hover:underline">
+              🔊 Testton abspielen
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Nur kritische Warnungen (Warnung/Alarm/Notfall) werden akustisch gemeldet. Kein Daueralarm.
+          </p>
         </div>
       </div>
     </div>
@@ -197,14 +205,20 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { useAppStore } from '../stores'
+import { WarningEngine } from '../services/warningEngine'
 import type { Settings } from '../types'
 
 const store = useAppStore()
 
 const tempSettings = reactive<Settings>({ ...store.settings })
 
+const playTestSound = () => {
+  WarningEngine.playTestSound(tempSettings.soundVolume)
+}
+
 const saveSettings = () => {
   store.updateSettings(tempSettings)
+  store.logEvent('modus_geaendert', `Einstellungen gespeichert (Brutal-Modus: ${tempSettings.brutalSuccessModeEnabled ? 'AN' : 'AUS'})`)
   alert('Einstellungen gespeichert!')
 }
 

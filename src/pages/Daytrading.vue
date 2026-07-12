@@ -17,15 +17,39 @@
       </p>
     </div>
 
-    <!-- Asset Selector -->
-    <div class="card">
-      <label class="block text-sm font-medium mb-3">Asset auswählen</label>
-      <select v-model="selectedAssetId" class="input-field w-full">
-        <option value="">-- Alle Assets --</option>
-        <option v-for="asset in store.assets" :key="asset.id" :value="asset.id">
-          {{ asset.symbol }} - {{ asset.name }}
-        </option>
-      </select>
+    <!-- Asset Selector + Kerzenintervall (§135/§136) -->
+    <div class="card space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-2">Asset auswählen</label>
+        <select v-model="selectedAssetId" class="input-field w-full">
+          <option value="">-- Alle Assets --</option>
+          <option v-for="asset in store.assets" :key="asset.id" :value="asset.id">
+            {{ asset.symbol }} - {{ asset.name }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2">Kerzenintervall</label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="interval in candleIntervals"
+            :key="interval.value"
+            @click="selectedInterval = interval.value"
+            :class="[
+              'px-3 py-1.5 rounded font-medium text-sm transition-colors',
+              selectedInterval === interval.value
+                ? 'bg-primary text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100'
+            ]"
+          >
+            {{ interval.label }}
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          1-5 Min: sehr kurzfristige Ein-/Ausstiege • 10-15 Min: saubere Intraday-Setups • 30-60 Min: Tagesstruktur.
+          Ansichtszeitraum: {{ selectedAssetClass === 'crypto' ? 'rollierende 24 Stunden (Krypto = 24/7-Markt)' : 'aktueller Handelstag' }}
+        </p>
+      </div>
     </div>
 
     <!-- Active Signals -->
@@ -44,7 +68,15 @@
             <h3 class="text-lg font-bold">{{ formatSignalType(signal.signalType) }}</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400">{{ formatTime(signal.timestamp) }}</p>
           </div>
-          <div class="text-right">
+          <div class="text-right flex flex-col items-end gap-1">
+            <span :class="[
+              'px-2 py-0.5 rounded text-xs font-bold',
+              signalGrade(signal) === 'A' ? 'bg-green-600 text-white' :
+              signalGrade(signal) === 'B' ? 'bg-yellow-500 text-white' :
+              'bg-gray-500 text-white'
+            ]">
+              {{ signalGrade(signal) }}-Setup
+            </span>
             <span v-if="signal.isTooLate" class="px-3 py-1 bg-gray-300 text-gray-900 rounded font-medium text-sm">
               VERPASST
             </span>
@@ -55,6 +87,9 @@
               'bg-gray-100 text-gray-800'
             ]">
               {{ formatDecision(signal.recommendation) }}
+            </span>
+            <span v-if="brutalRestriction(signal)" class="text-xs text-orange-600 dark:text-orange-400 font-medium">
+              {{ brutalRestriction(signal) }}
             </span>
           </div>
         </div>
@@ -168,14 +203,31 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import { DaytradingEngine } from '../services/daytradingEngine'
+import { WarningEngine } from '../services/warningEngine'
 import type { IntrabarSignal, DaytradesStats } from '../services/daytradingEngine'
 
 const store = useAppStore()
 
 const selectedAssetId = ref('')
+const selectedInterval = ref('5min')
 const daytradesignals = ref<IntrabarSignal[]>([])
 const dayStats = ref<DaytradesStats | null>(null)
 const loading = ref(false)
+
+// Pflichtintervalle nach §135: 1, 2, 5, 10, 15, 30, 60 Minuten
+const candleIntervals = [
+  { value: '1min', label: '1 Min' },
+  { value: '2min', label: '2 Min' },
+  { value: '5min', label: '5 Min' },
+  { value: '10min', label: '10 Min' },
+  { value: '15min', label: '15 Min' },
+  { value: '30min', label: '30 Min' },
+  { value: '60min', label: '60 Min' }
+]
+
+const selectedAssetClass = computed(() => {
+  return store.assets.find(a => a.id === selectedAssetId.value)?.assetClass || 'stock'
+})
 
 const dataQualitySufficient = computed(() => {
   if (!selectedAssetId.value) return true
@@ -209,7 +261,7 @@ const loadDaytradesignals = async () => {
     // Lade Intraday-Daten (5-Minuten Kerzen)
     let history = asset.priceHistory
     if (!history || history.length < 5) {
-      history = await apiService.getPriceHistory(selectedAssetId.value, '5min', 100)
+      history = await apiService.getPriceHistory(selectedAssetId.value, selectedInterval.value, 100)
       if (history.length > 0) {
         asset.priceHistory = history
       }
@@ -225,6 +277,33 @@ const loadDaytradesignals = async () => {
       )
 
       daytradesignals.value = signals
+
+      // Ereignisprotokoll (§126): Signale und Warnungen loggen
+      signals.forEach(signal => {
+        store.logEvent(
+          signal.isTooLate ? 'signal_blockiert' : 'signal_erzeugt',
+          `${signal.signalType}: Entry ${signal.entry.toFixed(2)}, Stop ${signal.stop.toFixed(2)}, CRV ${signal.riskReward.toFixed(2)}:1`,
+          { assetId: asset.id, assetSymbol: asset.symbol, detail: signal.isTooLate ? signal.tooLateReason : signal.reason }
+        )
+      })
+
+      // Akutwarnsystem (§125): Asset auf Warnereignisse prüfen
+      const allPositions = store.portfolios.flatMap(p => p.positions)
+      const acuteWarnings = WarningEngine.checkAsset(asset, history, allPositions)
+      acuteWarnings.forEach(w => {
+        store.addWarning({
+          id: w.id, timestamp: w.timestamp, assetId: w.assetId,
+          level: WarningEngine.severityToLevel(w.severity),
+          type: w.type, message: `${w.assetSymbol}: ${w.message} - ${w.action}`,
+          isResolved: false
+        })
+        store.logEvent('warnung_ausgeloest', `${w.type}: ${w.message}`,
+          { assetId: w.assetId, assetSymbol: w.assetSymbol, detail: w.action })
+        // Akustische Warnung falls aktiviert (§125.4)
+        if (store.settings.acousticWarningsEnabled) {
+          WarningEngine.playAlertSound(w.severity, store.settings.soundVolume)
+        }
+      })
 
       // Berechne Stats (diese sind public im Engine)
       const closes = history.map(p => p.close)
@@ -253,6 +332,27 @@ const loadDaytradesignals = async () => {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * Setup-Klassifizierung nach §127:
+ * A: CRV >= 2 und Konfidenz >= 75
+ * B: CRV >= 1.5 und Konfidenz >= 60
+ * C: alles darunter
+ */
+const signalGrade = (signal: IntrabarSignal): 'A' | 'B' | 'C' => {
+  if (signal.riskReward >= 2 && signal.confidence >= 75) return 'A'
+  if (signal.riskReward >= 1.5 && signal.confidence >= 60) return 'B'
+  return 'C'
+}
+
+/** Brutal-erfolgreich-Modus (§127.2): B nur reduziert, C nur Paper */
+const brutalRestriction = (signal: IntrabarSignal): string => {
+  if (!store.settings.brutalSuccessModeEnabled) return ''
+  const grade = signalGrade(signal)
+  if (grade === 'B') return 'Brutal-Modus: nur 50% Risiko'
+  if (grade === 'C') return 'Brutal-Modus: nur Paper Trading'
+  return ''
 }
 
 const formatSignalType = (type: string) => {
@@ -286,6 +386,12 @@ const formatTime = (date: Date) => {
 }
 
 watch(selectedAssetId, loadDaytradesignals)
+watch(selectedInterval, () => {
+  // Bei Intervallwechsel Daten neu laden
+  const asset = store.assets.find(a => a.id === selectedAssetId.value)
+  if (asset) asset.priceHistory = []
+  loadDaytradesignals()
+})
 
 onMounted(async () => {
   // Lade Assets

@@ -28,6 +28,8 @@ export interface PricePoint {
   interval: string
 }
 
+export type PortfolioType = 'real' | 'test' | 'paper' | 'shadow'
+
 export interface Position {
   id: string
   asset: Asset
@@ -36,10 +38,15 @@ export interface Position {
   buyDate: Date
   buyFees: number
   currency: Currency
-  portfolioType: 'real' | 'test' | 'paper'
+  portfolioType: PortfolioType
   entryThesis: string
   stopLoss: number
   profitTarget: number
+  // Depotübertrag (§121)
+  exchangeRateAtBuy?: number
+  depotSource?: string
+  transferDate?: Date
+  plausibilityIssues?: string[]
 }
 
 export interface Analysis {
@@ -95,7 +102,7 @@ export interface Scenario {
 export interface Portfolio {
   id: string
   name: string
-  type: 'real' | 'test' | 'paper'
+  type: PortfolioType
   positions: Position[]
   totalValue: number
   totalCost: number
@@ -127,6 +134,26 @@ export interface WarningEvent {
   message: string
   details?: Record<string, any>
   isResolved: boolean
+}
+
+// Ereignisprotokoll (§126)
+export type EventType =
+  | 'signal_erzeugt' | 'signal_blockiert' | 'warnung_ausgeloest'
+  | 'stop_erreicht' | 'ziel_erreicht' | 'starke_bewegung'
+  | 'news_erkannt' | 'scam_warnung' | 'datenfehler'
+  | 'trade_ausgefuehrt' | 'trade_verworfen' | 'regelbruch'
+  | 'steuerereignis' | 'gebuehrenaenderung' | 'testposition_angelegt'
+  | 'modus_geaendert'
+
+export interface EventLogEntry {
+  id: string
+  timestamp: Date
+  type: EventType
+  assetId?: string
+  assetSymbol?: string
+  message: string
+  detail?: string
+  markedAsFalseAlarm?: boolean
 }
 
 export interface TaxAssumption {

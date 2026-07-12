@@ -1,11 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType } from '../types'
+
+const emptyPortfolio = (id: string, name: string, type: Portfolio['type']): Portfolio => ({
+  id, name, type,
+  positions: [],
+  totalValue: 0,
+  totalCost: 0,
+  realizedGainLoss: 0,
+  unrealizedGainLoss: 0,
+  currency: 'EUR'
+})
 
 export const useAppStore = defineStore('app', () => {
   // State
   const assets = ref<Asset[]>([])
-  const portfolios = ref<Portfolio[]>([])
+  // Portfolioarten nach §120.2: echt, Test, Paper, Shadow
+  const portfolios = ref<Portfolio[]>([
+    emptyPortfolio('pf_real', 'Echtes Portfolio', 'real'),
+    emptyPortfolio('pf_test', 'Testportfolio', 'test'),
+    emptyPortfolio('pf_paper', 'Paper Trading', 'paper'),
+    emptyPortfolio('pf_shadow', 'Shadow Portfolio', 'shadow')
+  ])
+  const eventLog = ref<EventLogEntry[]>([])
   const analyses = ref<Analysis[]>([])
   const warningEvents = ref<WarningEvent[]>([])
   const transactions = ref<Transaction[]>([])
@@ -114,12 +131,35 @@ export const useAppStore = defineStore('app', () => {
     Object.assign(settings.value, newSettings)
   }
 
+  // Ereignisprotokoll (§126): jede Warnung und jedes Signal wird gespeichert
+  const logEvent = (type: EventType, message: string, opts?: { assetId?: string; assetSymbol?: string; detail?: string }) => {
+    eventLog.value.unshift({
+      id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date(),
+      type,
+      message,
+      assetId: opts?.assetId,
+      assetSymbol: opts?.assetSymbol,
+      detail: opts?.detail
+    })
+    // Protokoll auf 500 Einträge begrenzen
+    if (eventLog.value.length > 500) {
+      eventLog.value = eventLog.value.slice(0, 500)
+    }
+  }
+
+  const markEventAsFalseAlarm = (eventId: string) => {
+    const event = eventLog.value.find(e => e.id === eventId)
+    if (event) event.markedAsFalseAlarm = true
+  }
+
   return {
     // State
     assets,
     portfolios,
     analyses,
     warningEvents,
+    eventLog,
     transactions,
     selectedCurrency,
     selectedLanguage,
@@ -143,6 +183,8 @@ export const useAppStore = defineStore('app', () => {
     addWarning,
     resolveWarning,
     addTransaction,
-    updateSettings
+    updateSettings,
+    logEvent,
+    markEventAsFalseAlarm
   }
 })

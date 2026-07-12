@@ -4,6 +4,7 @@ import AssetDetail from '../pages/AssetDetail.vue'
 import Portfolio from '../pages/Portfolio.vue'
 import Analysis from '../pages/Analysis.vue'
 import Daytrading from '../pages/Daytrading.vue'
+import EventLog from '../pages/EventLog.vue'
 import Settings from '../pages/Settings.vue'
 
 const routes = [
@@ -31,6 +32,11 @@ const routes = [
     path: '/daytrading',
     name: 'Daytrading',
     component: Daytrading
+  },
+  {
+    path: '/protokoll',
+    name: 'EventLog',
+    component: EventLog
   },
   {
     path: '/settings',

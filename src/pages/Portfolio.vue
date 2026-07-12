@@ -3,7 +3,7 @@
     <!-- Portfolio Tabs -->
     <div class="flex gap-2 border-b border-gray-200 dark:border-gray-700">
       <button
-        v-for="type in ['real', 'test', 'paper']"
+        v-for="type in ['real', 'test', 'paper', 'shadow']"
         :key="type"
         @click="activePortfolioType = type as any"
         :class="[
@@ -13,7 +13,7 @@
             : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
         ]"
       >
-        {{ type === 'real' ? 'Echtgeld' : type === 'test' ? 'Test' : 'Paper' }} Portfolio
+        {{ type === 'real' ? 'Echtgeld' : type === 'test' ? 'Test' : type === 'paper' ? 'Paper' : 'Shadow' }} Portfolio
       </button>
     </div>
 
@@ -90,6 +90,18 @@
       </div>
     </div>
 
+    <!-- Depotübertrag (§121) -->
+    <DepotImport />
+
+    <!-- Shadow-Portfolio Hinweis (§120.4) -->
+    <div v-if="activePortfolioType === 'shadow'" class="card bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500">
+      <p class="text-sm text-blue-900 dark:text-blue-200 font-medium">Shadow Portfolio</p>
+      <p class="text-xs text-blue-800 dark:text-blue-300 mt-1">
+        Bildet ab, was passiert wäre, wenn alle regelkonformen Signale gehandelt worden wären.
+        Vergleich: Was hätte die Strategie gemacht? Was habe ich tatsächlich gemacht? Was hat mich mein Verhalten gekostet?
+      </p>
+    </div>
+
     <!-- Add New Position -->
     <div class="card">
       <h2 class="text-lg font-bold mb-4">Neue Position hinzufügen</h2>
@@ -150,10 +162,11 @@ import { ref, computed } from 'vue'
 import { useAppStore } from '../stores'
 import StatCard from '../components/StatCard.vue'
 import SellSimulation from '../components/SellSimulation.vue'
+import DepotImport from '../components/DepotImport.vue'
 import type { Position } from '../types'
 
 const store = useAppStore()
-const activePortfolioType = ref<'real' | 'test' | 'paper'>('real')
+const activePortfolioType = ref<'real' | 'test' | 'paper' | 'shadow'>('real')
 const selectedPositionId = ref<string | null>(null)
 
 const activePortfolio = computed(() => {
