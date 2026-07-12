@@ -66,8 +66,8 @@
                 </div>
               </td>
               <td class="px-4 py-3 text-right">{{ position.quantity }}</td>
-              <td class="px-4 py-3 text-right">{{ formatPrice(position.buyPrice) }}</td>
-              <td class="px-4 py-3 text-right">{{ formatPrice(position.asset.currentPrice) }}</td>
+              <td class="px-4 py-3 text-right">{{ store.formatInActive(position.buyPrice, position.currency) }}</td>
+              <td class="px-4 py-3 text-right">{{ store.formatInActive(position.asset.currentPrice, position.asset.currency) }}</td>
               <td :class="['px-4 py-3 text-right font-medium', getGLClass(position)]">
                 {{ formatCurrency(calculateGL(position)) }}
               </td>
@@ -112,6 +112,9 @@
       </div>
       <button @click="exportTaxReport" class="btn btn-primary">📄 Steuerreport exportieren</button>
     </div>
+
+    <!-- Tranchenplan: gestaffelter Ein-/Ausstieg -->
+    <TranchePlanner />
 
     <!-- Depotübertrag (§121) -->
     <DepotImport />
@@ -186,6 +189,7 @@ import { useAppStore } from '../stores'
 import StatCard from '../components/StatCard.vue'
 import SellSimulation from '../components/SellSimulation.vue'
 import DepotImport from '../components/DepotImport.vue'
+import TranchePlanner from '../components/TranchePlanner.vue'
 import { NetResultEngine } from '../services/netResultEngine'
 import type { Position } from '../types'
 

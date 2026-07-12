@@ -27,6 +27,9 @@
     <!-- Marktampel / Regime-Filter -->
     <MarketLight />
 
+    <!-- TradingView-Webhooks (Ausbaustufe 0.7) -->
+    <WebhookSignals />
+
     <!-- Anstehende wichtige Termine -->
     <div v-if="store.upcomingEvents.length > 0" class="card border-l-4 border-blue-400">
       <div class="flex justify-between items-center mb-2">
@@ -55,7 +58,7 @@
             <p class="font-bold text-sm">{{ asset.symbol }}</p>
             <p class="text-xs text-gray-500">{{ asset.name }}</p>
           </div>
-          <p class="font-bold">{{ formatPrice(asset.currentPrice) }}</p>
+          <p class="font-bold">{{ store.formatInActive(asset.currentPrice, asset.currency) }}</p>
         </div>
       </div>
     </div>
@@ -127,8 +130,10 @@
                 </div>
               </div>
               <div class="text-right">
-                <p class="font-bold">{{ formatPrice(asset.currentPrice) }}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400">in {{ asset.currency }}</p>
+                <p class="font-bold">{{ store.formatInActive(asset.currentPrice, asset.currency) }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ asset.currency !== store.activeCurrency ? `Original: ${asset.currency}` : `in ${asset.currency}` }}
+                </p>
               </div>
             </div>
           </div>

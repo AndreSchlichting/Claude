@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan } from '../types'
 
 const STORAGE_KEY = 'tdl_state_v1'
 
@@ -37,6 +37,9 @@ export const useAppStore = defineStore('app', () => {
   const priceAlerts = ref<PriceAlert[]>([])
   const watchlist = ref<string[]>([])
   const calendarEvents = ref<CalendarEvent[]>([])
+  const tranchePlans = ref<TranchePlan[]>([])
+  // Echter EUR/USD-Kurs (EZB via frankfurter.app), wird beim Start geladen
+  const usdPerEur = ref(1.09)
   const analyses = ref<Analysis[]>([])
   const warningEvents = ref<WarningEvent[]>([])
   const transactions = ref<Transaction[]>([])
@@ -246,6 +249,37 @@ export const useAppStore = defineStore('app', () => {
     return calendarEvents.value.filter(e => e.date >= today && e.date <= inSevenDays)
   })
 
+  // --- Tranchenpläne ---
+  const addTranchePlan = (plan: TranchePlan) => {
+    tranchePlans.value.unshift(plan)
+    logEvent('signal_erzeugt', `Tranchenplan angelegt: ${plan.assetSymbol} (${plan.entries.length} Einstiege, ${plan.exits.length} Ausstiege)`,
+      { assetSymbol: plan.assetSymbol })
+  }
+
+  const removeTranchePlan = (id: string) => {
+    tranchePlans.value = tranchePlans.value.filter(p => p.id !== id)
+  }
+
+  // --- Währungsumrechnung ---
+  const setUsdPerEur = (rate: number) => {
+    if (rate > 0) usdPerEur.value = rate
+  }
+
+  /** Rechnet einen Betrag aus seiner Ursprungswährung in die aktive Währung um */
+  const convertToActive = (amount: number, from: Currency): number => {
+    const to = selectedCurrency.value
+    if (from === to) return amount
+    return from === 'EUR' ? amount * usdPerEur.value : amount / usdPerEur.value
+  }
+
+  /** Formatiert einen Betrag in der aktiven Währung (mit echter Umrechnung) */
+  const formatInActive = (amount: number, from: Currency): string => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: selectedCurrency.value
+    }).format(convertToActive(amount, from))
+  }
+
   // --- Watchlist ---
   const toggleWatchlist = (assetId: string) => {
     if (watchlist.value.includes(assetId)) {
@@ -267,6 +301,7 @@ export const useAppStore = defineStore('app', () => {
       if (data.priceAlerts) priceAlerts.value = data.priceAlerts
       if (data.watchlist) watchlist.value = data.watchlist
       if (data.calendarEvents) calendarEvents.value = data.calendarEvents
+      if (data.tranchePlans) tranchePlans.value = data.tranchePlans
       if (data.transactions) transactions.value = data.transactions
       if (data.analyses) analyses.value = data.analyses
       if (data.warningEvents) warningEvents.value = data.warningEvents
@@ -286,6 +321,7 @@ export const useAppStore = defineStore('app', () => {
         priceAlerts: priceAlerts.value,
         watchlist: watchlist.value,
         calendarEvents: calendarEvents.value,
+        tranchePlans: tranchePlans.value,
         eventLog: eventLog.value.slice(0, 300),
         transactions: transactions.value,
         analyses: analyses.value.slice(0, 100),
@@ -300,7 +336,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   loadPersisted()
-  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents],
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents, tranchePlans],
     persist, { deep: true })
 
   return {
@@ -314,7 +350,9 @@ export const useAppStore = defineStore('app', () => {
     priceAlerts,
     watchlist,
     calendarEvents,
+    tranchePlans,
     upcomingEvents,
+    usdPerEur,
     transactions,
     selectedCurrency,
     selectedLanguage,
@@ -348,6 +386,11 @@ export const useAppStore = defineStore('app', () => {
     checkPriceAlerts,
     toggleWatchlist,
     addCalendarEvent,
-    removeCalendarEvent
+    removeCalendarEvent,
+    addTranchePlan,
+    removeTranchePlan,
+    setUsdPerEur,
+    convertToActive,
+    formatInActive
   }
 })

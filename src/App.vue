@@ -34,15 +34,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import Header from './components/Header.vue'
 import { RouterView } from 'vue-router'
 import { useAppStore } from './stores'
+import { apiService } from './services/api'
 
 const store = useAppStore()
 
 const criticalWarning = computed(() => {
   return store.activeWarnings.find(w => w.level === 'red' || w.level === 'black') || null
+})
+
+onMounted(async () => {
+  // Echten EUR/USD-Kurs laden (EZB), damit die Währungsumschaltung korrekt rechnet
+  const rate = await apiService.getExchangeRate('EUR', 'USD')
+  store.setUsdPerEur(rate)
 })
 </script>
 

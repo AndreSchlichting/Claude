@@ -349,7 +349,7 @@ export const apiService = {
     return () => clearInterval(interval)
   },
 
-  // Wechselkurs EUR/USD
+  // Wechselkurs EUR/USD - echte EZB-Kurse via frankfurter.app (kein API-Key nötig)
   async getExchangeRate(from: string, to: string): Promise<number> {
     if (from === to) return 1
 
@@ -362,19 +362,21 @@ export const apiService = {
     }
 
     try {
-      // Alpha Vantage FX-Daten
-      const data = await fetchFromAlphaVantage(`${from}${to}`, 'CURRENCY_EXCHANGE_RATE')
-
-      if (data && data['Realtime Currency Exchange Rate']) {
-        const rate = parseFloat(data['Realtime Currency Exchange Rate']['5. Exchange Rate'])
+      // frankfurter.app: offizielle EZB-Referenzkurse, kostenlos, CORS-freundlich
+      const response = await axios.get('https://api.frankfurter.app/latest', {
+        params: { from, to },
+        timeout: 8000
+      })
+      const rate = response.data?.rates?.[to]
+      if (rate && rate > 0) {
         cache.set(cacheKey, { data: rate, timestamp: Date.now() })
         return rate
       }
     } catch (error) {
-      console.error(`Fehler beim Abruf von ${from}/${to}:`, error)
+      console.error(`Wechselkurs ${from}/${to} nicht abrufbar:`, error)
     }
 
-    // Fallback: Standard-Wechselkurse
+    // Fallback nur wenn API nicht erreichbar
     if (from === 'EUR' && to === 'USD') return 1.1
     if (from === 'USD' && to === 'EUR') return 0.91
     return 1

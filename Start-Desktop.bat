@@ -8,10 +8,23 @@ echo   Trading Decision Lab - Desktop-Version
 echo ============================================
 echo.
 
-where node >nul 2>nul
-if errorlevel 1 (
-    echo [FEHLER] Node.js ist nicht installiert.
-    echo Bitte von https://nodejs.org herunterladen und installieren.
+set "NODE_OK="
+node --version >nul 2>nul && set "NODE_OK=1"
+if not defined NODE_OK if exist "%ProgramFiles%\nodejs\node.exe" (
+    set "PATH=%ProgramFiles%\nodejs;%PATH%"
+    set "NODE_OK=1"
+)
+if not defined NODE_OK if exist "%LocalAppData%\Programs\nodejs\node.exe" (
+    set "PATH=%LocalAppData%\Programs\nodejs;%PATH%"
+    set "NODE_OK=1"
+)
+if not defined NODE_OK if exist "%~dp0runtime\node\node.exe" (
+    set "PATH=%~dp0runtime\node;%PATH%"
+    set "NODE_OK=1"
+)
+if not defined NODE_OK (
+    echo Node.js nicht gefunden. Bitte zuerst Start.bat ausfuehren -
+    echo sie richtet Node.js automatisch ein.
     pause
     exit /b 1
 )
@@ -33,3 +46,4 @@ if not exist dist (
 
 echo Starte Desktop-App...
 call npm run desktop
+pause

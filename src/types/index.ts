@@ -189,6 +189,24 @@ export interface CalendarEvent {
   note?: string
 }
 
+// Tranchenplan: gestaffelter Ein- und Ausstieg
+export interface Tranche {
+  price: number
+  percent: number // Anteil an der Gesamtposition in %
+}
+
+export interface TranchePlan {
+  id: string
+  createdAt: Date
+  assetSymbol: string
+  direction: 'long' | 'short'
+  totalCapital: number
+  stopPrice: number
+  entries: Tranche[]
+  exits: Tranche[]
+  note?: string
+}
+
 // Preis-Alerts: Alarm-Level je Asset
 export interface PriceAlert {
   id: string

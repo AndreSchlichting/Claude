@@ -31,3 +31,12 @@ pnpm-debug.log*
 # Cache
 .cache/
 .turbo/
+
+# Portable Node-Laufzeit (von Start.bat heruntergeladen)
+runtime/
+
+# Electron-Build-Ausgabe
+release/
+
+# Webhook-Signale (lokale Daten)
+server/signals.json

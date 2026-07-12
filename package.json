@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
     "desktop": "electron .",
+    "webhooks": "node server/webhook-server.mjs",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:linux": "npm run build && electron-builder --linux",

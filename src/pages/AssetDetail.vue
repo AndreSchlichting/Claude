@@ -7,34 +7,37 @@
         <p class="text-gray-600 dark:text-gray-400">{{ asset.symbol }} • {{ asset.assetClass }}</p>
       </div>
       <div class="text-right">
-        <p class="text-4xl font-bold">{{ formatPrice(asset.currentPrice) }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-400">in {{ asset.currency }}</p>
+        <p class="text-4xl font-bold">{{ store.formatInActive(asset.currentPrice, asset.currency) }}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">Originalwährung: {{ asset.currency }}</p>
       </div>
     </div>
 
-    <!-- Price Comparison (EUR vs USD) -->
+    <!-- Kurs in € und US-$ (echte EZB-Umrechnung) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="card border-2" :class="store.activeCurrency === 'EUR' ? 'border-primary' : 'border-gray-200 dark:border-gray-700 opacity-50'">
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Kurs in €</p>
         <p class="text-2xl font-bold">
-          {{ formatPrice(asset.currency === 'EUR' ? asset.currentPrice : asset.currentPrice / exchangeRate) }}
+          € {{ priceInEur.toFixed(2) }}
         </p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Aktueller Kurs in Euro</p>
       </div>
       <div class="card border-2" :class="store.activeCurrency === 'USD' ? 'border-primary' : 'border-gray-200 dark:border-gray-700 opacity-50'">
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Kurs in US-$</p>
         <p class="text-2xl font-bold">
-          {{ formatPrice(asset.currency === 'USD' ? asset.currentPrice : asset.currentPrice * exchangeRate) }}
+          $ {{ priceInUsd.toFixed(2) }}
         </p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Aktueller Kurs in US-Dollar</p>
       </div>
     </div>
+    <p class="text-xs text-gray-500 -mt-3 px-1">
+      EZB-Referenzkurs: 1 € = {{ store.usdPerEur.toFixed(4) }} $ (frankfurter.app)
+    </p>
 
-    <!-- Kerzenchart (rot/grün) -->
+    <!-- Kerzenchart (rot/grün) - Kerzen in der AKTIVEN Währung umgerechnet -->
     <CandleChart
-      v-if="asset?.priceHistory && asset.priceHistory.length > 0"
-      :priceHistory="asset.priceHistory"
-      :title="`${asset.symbol} - Kerzenchart (${store.activeCurrency})`"
+      v-if="convertedHistory.length > 0"
+      :priceHistory="convertedHistory"
+      :title="`${asset?.symbol} - Kerzenchart in ${store.activeCurrency === 'EUR' ? '€' : 'US-$'}`"
     />
 
     <!-- Preis-Alerts -->
@@ -159,8 +162,42 @@ import CandleChart from '../components/CandleChart.vue'
 const route = useRoute()
 const store = useAppStore()
 
-const exchangeRate = ref(1.1)
 const loading = ref(true)
+
+// Echte EUR/USD-Umrechnung über den EZB-Kurs aus dem Store
+const priceInEur = computed(() => {
+  if (!asset.value) return 0
+  return asset.value.currency === 'EUR'
+    ? asset.value.currentPrice
+    : asset.value.currentPrice / store.usdPerEur
+})
+
+const priceInUsd = computed(() => {
+  if (!asset.value) return 0
+  return asset.value.currency === 'USD'
+    ? asset.value.currentPrice
+    : asset.value.currentPrice * store.usdPerEur
+})
+
+/**
+ * Kerzen in die aktive Währung umrechnen:
+ * Bei EUR/USD-Umschaltung ändert sich der komplette Chart.
+ */
+const convertedHistory = computed(() => {
+  const h = asset.value?.priceHistory || []
+  if (!asset.value || h.length === 0) return []
+  const from = asset.value.currency
+  const to = store.activeCurrency
+  if (from === to) return h
+  const factor = from === 'EUR' ? store.usdPerEur : 1 / store.usdPerEur
+  return h.map(p => ({
+    ...p,
+    open: p.open * factor,
+    high: p.high * factor,
+    low: p.low * factor,
+    close: p.close * factor
+  }))
+})
 const newAlertPrice = ref(0)
 const newAlertDirection = ref<'ueber' | 'unter'>('ueber')
 
@@ -226,9 +263,9 @@ onMounted(async () => {
         store.updateAsset(assetId, { priceHistory: history })
       }
 
-      // Lade Wechselkurs
+      // Lade echten EZB-Wechselkurs
       const rate = await apiService.getExchangeRate('EUR', 'USD')
-      exchangeRate.value = rate
+      store.setUsdPerEur(rate)
     }
   } catch (error) {
     console.error('Fehler beim Laden des Assets:', error)
