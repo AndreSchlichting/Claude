@@ -1,11 +1,10 @@
 <template>
   <header class="glass-header">
-    <div class="container mx-auto px-4 py-4">
-      <div class="flex justify-between items-center flex-wrap gap-3">
-        <div class="flex items-center gap-4">
-          <h1 class="text-2xl font-bold text-primary">Trading Decision Lab</h1>
-          <span class="hidden lg:inline text-sm text-gray-600 dark:text-gray-400">Brutal erfolgreich</span>
-          <nav class="hidden md:flex gap-4 ml-4 border-l border-white/50 dark:border-white/10 pl-6">
+    <div class="container mx-auto px-4 py-2">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div class="flex items-center gap-3">
+          <h1 class="text-lg font-bold text-primary whitespace-nowrap">Trading Decision Lab</h1>
+          <nav class="hidden md:flex gap-3 ml-2 border-l border-gray-300/60 dark:border-white/10 pl-4">
             <RouterLink to="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
               Dashboard
             </RouterLink>
@@ -84,26 +83,20 @@
         </div>
       </div>
 
-      <!-- Info Bar -->
-      <div class="mt-4 pt-4 border-t border-white/40 dark:border-white/10 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-          <span class="text-gray-600 dark:text-gray-400">Portfolio Wert</span>
-          <p class="font-bold text-lg">{{ formatCurrency(store.totalPortfolioValue) }}</p>
-        </div>
-        <div>
-          <span class="text-gray-600 dark:text-gray-400">Gewinn/Verlust</span>
-          <p :class="['font-bold text-lg', store.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600']">
-            {{ formatCurrency(store.totalGainLoss) }}
-          </p>
-        </div>
-        <div>
-          <span class="text-gray-600 dark:text-gray-400">Aktive Warnungen</span>
-          <p class="font-bold text-lg text-orange-600">{{ store.activeWarnings.length }}</p>
-        </div>
-        <div>
-          <span class="text-gray-600 dark:text-gray-400">Aktive Positionen</span>
-          <p class="font-bold text-lg">{{ totalPositions }}</p>
-        </div>
+      <!-- Kompakte Info-Zeile -->
+      <div class="mt-1.5 pt-1.5 border-t border-gray-200/70 dark:border-white/10 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+        <span class="text-gray-600 dark:text-gray-400">Portfolio:
+          <b class="text-gray-900 dark:text-white text-sm">{{ formatCurrency(store.totalPortfolioValue) }}</b>
+        </span>
+        <span class="text-gray-600 dark:text-gray-400">G/V:
+          <b :class="['text-sm', store.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600']">{{ formatCurrency(store.totalGainLoss) }}</b>
+        </span>
+        <span class="text-gray-600 dark:text-gray-400">Warnungen:
+          <b class="text-orange-600 text-sm">{{ store.activeWarnings.length }}</b>
+        </span>
+        <span class="text-gray-600 dark:text-gray-400">Positionen:
+          <b class="text-gray-900 dark:text-white text-sm">{{ totalPositions }}</b>
+        </span>
       </div>
     </div>
   </header>

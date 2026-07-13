@@ -12,6 +12,11 @@ html, body {
   height: 100%;
 }
 
+/* Kompaktes Layout: kleinere Basis-Schrift skaliert alle Abstände mit */
+html {
+  font-size: 14px;
+}
+
 html.dark {
   color-scheme: dark;
 }
@@ -23,13 +28,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Apple-Glass Hintergrund: weiche Farbverläufe hinter den Glasflächen */
+/* Apple-Glass Hintergrund: hell und ruhig, damit Text auf den Karten lesbar bleibt */
 .glass-bg {
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(99, 179, 237, 0.35), transparent 60%),
-    radial-gradient(1000px 500px at 85% 10%, rgba(16, 185, 129, 0.25), transparent 55%),
-    radial-gradient(900px 600px at 50% 110%, rgba(167, 139, 250, 0.25), transparent 60%),
-    linear-gradient(160deg, #eef4fb 0%, #e9f0f7 50%, #eaf4ef 100%);
+    radial-gradient(1200px 600px at 15% -10%, rgba(99, 179, 237, 0.20), transparent 60%),
+    radial-gradient(1000px 500px at 85% 10%, rgba(16, 185, 129, 0.14), transparent 55%),
+    radial-gradient(900px 600px at 50% 110%, rgba(167, 139, 250, 0.12), transparent 60%),
+    linear-gradient(160deg, #f4f8fc 0%, #f1f5f9 50%, #f2f8f4 100%);
   background-attachment: fixed;
 }
 
@@ -44,56 +49,56 @@ body {
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-xl font-medium transition-all;
+    @apply px-3 py-1.5 rounded-lg font-medium transition-all;
   }
 
   .btn-primary {
-    @apply bg-primary/90 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 backdrop-blur;
+    @apply bg-primary text-white hover:bg-emerald-600 shadow shadow-emerald-500/20;
   }
 
   .btn-secondary {
-    @apply bg-white/50 text-gray-900 hover:bg-white/70 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 backdrop-blur border border-white/40 dark:border-white/10;
+    @apply bg-white/80 text-gray-900 hover:bg-white dark:bg-white/10 dark:text-white dark:hover:bg-white/20 border border-gray-300/70 dark:border-white/10;
   }
 
   .btn-danger {
-    @apply bg-danger/90 text-white hover:bg-red-600 shadow-lg shadow-red-500/20;
+    @apply bg-danger text-white hover:bg-red-600 shadow shadow-red-500/20;
   }
 
-  /* Apple-Glass Karte: Transluzenz + Blur + feine Lichtkante */
+  /* Glas-Karte: deutlich deckender fuer besseren Kontrast, kompaktes Padding */
   .card {
-    @apply rounded-2xl p-6
-      bg-white/55 dark:bg-slate-800/40
-      backdrop-blur-2xl
-      border border-white/50 dark:border-white/10
-      shadow-[0_8px_32px_rgba(31,38,135,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)];
+    @apply rounded-xl p-4
+      bg-white/85 dark:bg-slate-800/80
+      backdrop-blur-xl
+      border border-white/70 dark:border-white/10
+      shadow-[0_4px_16px_rgba(31,38,135,0.10)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)]
+      text-gray-900 dark:text-gray-100;
   }
 
   .glass-header {
     @apply sticky top-0 z-40
-      bg-white/60 dark:bg-slate-900/55
-      backdrop-blur-2xl
-      border-b border-white/50 dark:border-white/10
-      shadow-[0_4px_24px_rgba(31,38,135,0.08)];
+      bg-white/85 dark:bg-slate-900/85
+      backdrop-blur-xl
+      border-b border-gray-200/80 dark:border-white/10
+      shadow-[0_2px_12px_rgba(31,38,135,0.08)];
   }
 
   .input-field {
-    @apply px-3 py-2 rounded-xl
-      bg-white/60 dark:bg-white/5
-      border border-white/60 dark:border-white/10
-      backdrop-blur
+    @apply px-2.5 py-1.5 rounded-lg
+      bg-white dark:bg-slate-900/60
+      border border-gray-300 dark:border-white/15
       text-gray-900 dark:text-white
       focus:ring-2 focus:ring-primary/40 focus:border-primary/40;
   }
 
   /* Glas-Chip für Toggle-Buttons (Sprache/Währung) */
   .glass-chip {
-    @apply px-3 py-1 rounded-lg font-medium text-sm transition-all backdrop-blur;
+    @apply px-2.5 py-1 rounded-lg font-medium text-sm transition-all;
   }
   .glass-chip-active {
-    @apply bg-primary/90 text-white shadow-md shadow-emerald-500/30;
+    @apply bg-primary text-white shadow shadow-emerald-500/30;
   }
   .glass-chip-inactive {
-    @apply bg-white/40 dark:bg-white/10 text-gray-500 dark:text-gray-400 opacity-60 hover:opacity-90 border border-white/40 dark:border-white/10;
+    @apply bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-white border border-gray-300/60 dark:border-white/10;
   }
 }
 

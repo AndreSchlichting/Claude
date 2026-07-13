@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3">
     <div class="card">
-      <h1 class="text-3xl font-bold mb-2">Daytrading Mode</h1>
+      <h1 class="text-xl font-bold mb-1">Daytrading Mode</h1>
       <p class="text-gray-600 dark:text-gray-400">
         Kurzzeitige Setups mit Fokus auf heutigen Handelstag • Kerzenintervalle: 1-60 Min
       </p>

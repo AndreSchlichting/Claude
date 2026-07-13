@@ -1,9 +1,9 @@
 <template>
-  <div v-if="asset" class="space-y-6">
+  <div v-if="asset" class="space-y-3">
     <!-- Header -->
     <div class="card flex justify-between items-start">
       <div>
-        <h1 class="text-3xl font-bold">{{ asset.name }}</h1>
+        <h1 class="text-xl font-bold">{{ asset.name }}</h1>
         <p class="text-gray-600 dark:text-gray-400">{{ asset.symbol }} • {{ asset.assetClass }}</p>
       </div>
       <div class="text-right">

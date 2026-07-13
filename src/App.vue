@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen glass-bg text-gray-900 dark:text-gray-100">
     <Header />
-    <main class="container mx-auto px-4 py-8">
+    <main class="container mx-auto px-4 py-4 max-w-[1800px]">
       <RouterView />
     </main>
 

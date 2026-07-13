@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3">
     <!-- Portfolio Tabs -->
     <div class="flex gap-2 border-b border-gray-200 dark:border-gray-700">
       <button
@@ -148,7 +148,7 @@
     </div>
 
     <!-- Sell Simulation for Selected Position -->
-    <div v-if="selectedPosition" class="space-y-6">
+    <div v-if="selectedPosition" class="space-y-3">
       <div class="card border-l-4 border-blue-500">
         <p class="text-sm font-medium text-blue-900 dark:text-blue-200">
           📊 Verkaufssimulation für {{ selectedPosition.asset.symbol }}

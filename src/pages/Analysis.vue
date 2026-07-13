@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3">
     <div class="card">
-      <h1 class="text-3xl font-bold mb-2">Analyse-Engine</h1>
+      <h1 class="text-xl font-bold mb-1">Analyse-Engine</h1>
       <p class="text-gray-600 dark:text-gray-400">
         Professionelle Entscheidungsfindung mit Begründung, Szenarien und Warnsystem
       </p>
