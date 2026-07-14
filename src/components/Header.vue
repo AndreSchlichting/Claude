@@ -76,9 +76,12 @@
             </button>
           </div>
 
-          <!-- Settings Link -->
-          <RouterLink to="/settings" class="p-2 text-gray-600 dark:text-gray-400 hover:text-primary">
-            <Settings :size="20" />
+          <!-- Hilfe & Settings -->
+          <RouterLink to="/hilfe" class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary font-bold" title="Hilfe">
+            ?
+          </RouterLink>
+          <RouterLink to="/settings" class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary">
+            <Settings :size="18" />
           </RouterLink>
         </div>
       </div>

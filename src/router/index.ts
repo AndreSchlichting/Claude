@@ -10,6 +10,7 @@ import AnalysisTools from '../pages/AnalysisTools.vue'
 import Journal from '../pages/Journal.vue'
 import Replay from '../pages/Replay.vue'
 import Calendar from '../pages/Calendar.vue'
+import Help from '../pages/Help.vue'
 import Settings from '../pages/Settings.vue'
 
 const routes = [
@@ -67,6 +68,11 @@ const routes = [
     path: '/kalender',
     name: 'Calendar',
     component: Calendar
+  },
+  {
+    path: '/hilfe',
+    name: 'Help',
+    component: Help
   },
   {
     path: '/settings',
