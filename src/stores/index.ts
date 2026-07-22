@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { PaperBroker } from '../services/paperBroker'
 import { ref, computed, watch } from 'vue'
 import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan } from '../types'
 
@@ -230,6 +231,24 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
+  /** Paper-Broker (3.0): faellige Stops/Ziele automatisch ausfuehren */
+  const settlePaperPositions = () => {
+    const fills = PaperBroker.settle(portfolios.value, settings.value)
+    fills.forEach(fill => {
+      transactions.value.push(fill.transaction)
+      logEvent(fill.eventType, fill.message,
+        { assetId: fill.position.asset.id, assetSymbol: fill.position.asset.symbol })
+      addWarning({
+        id: `warn_fill_${fill.transaction.id}`, timestamp: new Date(),
+        assetId: fill.position.asset.id,
+        level: fill.reason === 'stop' ? 'orange' : 'green',
+        type: fill.reason === 'stop' ? 'Stop ausgefuehrt' : 'Ziel erreicht',
+        message: fill.message, isResolved: false
+      })
+    })
+    return fills.length
+  }
+
   // --- Kalender (Ausbaustufe 0.4) ---
   const addCalendarEvent = (event: CalendarEvent) => {
     calendarEvents.value.push(event)
@@ -391,6 +410,7 @@ export const useAppStore = defineStore('app', () => {
     removeTranchePlan,
     setUsdPerEur,
     convertToActive,
-    formatInActive
+    formatInActive,
+    settlePaperPositions
   }
 })

@@ -439,6 +439,8 @@ const loadDaytradesignals = async () => {
     }
     // Preis-Alerts prüfen
     store.checkPriceAlerts()
+    // Paper-Broker: fällige Stops/Ziele ausführen
+    store.settlePaperPositions()
   } catch (error) {
     console.error('Fehler beim Laden von Daytrading-Signalen:', error)
   } finally {

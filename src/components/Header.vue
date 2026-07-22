@@ -5,32 +5,9 @@
         <div class="flex items-center gap-3">
           <h1 class="text-lg font-bold text-primary whitespace-nowrap">Trading Decision Lab</h1>
           <nav class="hidden md:flex gap-3 ml-2 border-l border-gray-300/60 dark:border-white/10 pl-4">
-            <RouterLink to="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Dashboard
-            </RouterLink>
-            <RouterLink to="/daytrading" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Daytrading
-            </RouterLink>
-            <RouterLink to="/modi" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Modi
-            </RouterLink>
-            <RouterLink to="/analyse" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Analyse
-            </RouterLink>
-            <RouterLink to="/portfolio" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Portfolio
-            </RouterLink>
-            <RouterLink to="/journal" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Journal
-            </RouterLink>
-            <RouterLink to="/replay" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Replay
-            </RouterLink>
-            <RouterLink to="/kalender" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Kalender
-            </RouterLink>
-            <RouterLink to="/protokoll" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
-              Protokoll
+            <RouterLink v-for="item in navItems" :key="item.to" :to="item.to"
+              class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary">
+              {{ item.label }}
             </RouterLink>
           </nav>
         </div>
@@ -88,16 +65,16 @@
 
       <!-- Kompakte Info-Zeile -->
       <div class="mt-1.5 pt-1.5 border-t border-gray-200/70 dark:border-white/10 flex flex-wrap gap-x-6 gap-y-1 text-xs">
-        <span class="text-gray-600 dark:text-gray-400">Portfolio:
+        <span class="text-gray-600 dark:text-gray-400">{{ L('Portfolio', 'Portfolio') }}:
           <b class="text-gray-900 dark:text-white text-sm">{{ formatCurrency(store.totalPortfolioValue) }}</b>
         </span>
-        <span class="text-gray-600 dark:text-gray-400">G/V:
+        <span class="text-gray-600 dark:text-gray-400">{{ L('G/V', 'P/L') }}:
           <b :class="['text-sm', store.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600']">{{ formatCurrency(store.totalGainLoss) }}</b>
         </span>
-        <span class="text-gray-600 dark:text-gray-400">Warnungen:
+        <span class="text-gray-600 dark:text-gray-400">{{ L('Warnungen', 'Warnings') }}:
           <b class="text-orange-600 text-sm">{{ store.activeWarnings.length }}</b>
         </span>
-        <span class="text-gray-600 dark:text-gray-400">Positionen:
+        <span class="text-gray-600 dark:text-gray-400">{{ L('Positionen', 'Positions') }}:
           <b class="text-gray-900 dark:text-white text-sm">{{ totalPositions }}</b>
         </span>
       </div>
@@ -112,6 +89,21 @@ import { AlertTriangle, Settings } from 'lucide-vue-next'
 import { useAppStore } from '../stores'
 
 const store = useAppStore()
+
+// i18n-Basis: DE/EN fuer Navigation und Kopfzeile
+const L = (de: string, en: string) => store.activeLanguage === 'en' ? en : de
+
+const navItems = computed(() => [
+  { to: '/', label: L('Dashboard', 'Dashboard') },
+  { to: '/daytrading', label: L('Daytrading', 'Day Trading') },
+  { to: '/modi', label: L('Modi', 'Modes') },
+  { to: '/analyse', label: L('Analyse', 'Analysis') },
+  { to: '/portfolio', label: L('Portfolio', 'Portfolio') },
+  { to: '/journal', label: L('Journal', 'Journal') },
+  { to: '/replay', label: L('Replay', 'Replay') },
+  { to: '/kalender', label: L('Kalender', 'Calendar') },
+  { to: '/protokoll', label: L('Protokoll', 'Event Log') }
+])
 
 const totalPositions = computed(() => {
   return store.portfolios.reduce((sum, p) => sum + p.positions.length, 0)

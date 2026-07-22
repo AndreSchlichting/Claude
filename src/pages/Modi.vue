@@ -374,6 +374,9 @@ const refreshScanner = async () => {
 
     // Preis-Alerts gegen aktuelle Kurse prüfen
     store.checkPriceAlerts()
+
+    // Paper-Broker: fällige Stops/Ziele automatisch ausführen (3.0-Simulation)
+    store.settlePaperPositions()
   } finally {
     scanning.value = false
   }

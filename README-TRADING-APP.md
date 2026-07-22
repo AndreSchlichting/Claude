@@ -1,61 +1,190 @@
-# Trading Decision Lab v0.9
+# Trading Decision Lab - Brutal erfolgreich
 
-Professionelles Trading-Entscheidungszentrum - **brutal ehrlich, mit echten Daten**.
-Eine Codebasis, drei Auslieferungen: Web/PWA, Desktop (Electron), Android (Capacitor).
+Professionelle Trading-App mit **Analyse-Engine**, **Warnsystem**, **Gebühren-** und **Steuermodell** für erfolgreiche Entscheidungen.
 
-## Schnellstart
+## 🎯 Vision
 
-**Windows:** Doppelklick auf `Start.bat` - richtet beim ersten Mal alles automatisch ein
-(lädt bei Bedarf portable Node.js herunter), öffnet dann den Browser.
+Wir wollen nicht ausprobieren. Wir wollen **brutal erfolgreich** werden.
+- Nicht durch Glück
+- Nicht durch Hype
+- Nicht durch blinde Signale
+- Sondern durch: **Transparenz, Wissen, Risiko-Disziplin, echte Daten, klare Begründungen und harte Warnsysteme**
 
-**Desktop-Fenster:** `Start-Desktop.bat` • **Mac/Linux:** `./start.sh`
+## ✨ Features
 
-Details: `HYBRID-ANLEITUNG.md` (EXE/APK bauen) und `WEBHOOKS-ANLEITUNG.md` (TradingView).
+### Phase 1: Grundgerüst ✅
+- ✅ Vue 3 + TypeScript + Tailwind CSS
+- ✅ Pinia State Management
+- ✅ Multi-Language (DE/EN)
+- ✅ Währungsumschaltung (EUR/USD) mit Grafik-Anpassung
+- ✅ Dark Mode
+- ✅ Professionelle UI-Architektur
 
-## Seiten
+### Phase 2: Kernfunktionalität 🚀
+- [ ] Asset-Management (echte API-Daten)
+- [ ] Portfolio-Verwaltung (Real/Test/Paper)
+- [ ] Analyse-Engine (Begründungslogik + Szenarien)
+- [ ] Warnsystem (grün/gelb/orange/rot/schwarz)
+- [ ] Gebühren-Profile + deutsche Steuerlogik
+- [ ] Netto-Ergebnis Berechnungen
 
-| Seite | Funktion |
-|-------|----------|
-| Dashboard | Marktampel, Kennzahlen, Watchlist, Termine, TradingView-Signale, Warnungen |
-| Daytrading | Intraday-Signale, Kerzenintervalle 1-60 Min, Ansichtszeitraum, Datenstatus, Order-Ticket, Positionsrechner |
-| Modi | Pre-Market, Live-Scanner, Trade-Management, Exit, Risk-Off, News-Schock |
-| Analyse | Marktstruktur, S/R-Zonen, Volumenprofil, RSI/MACD/EMA/ATR, Backtest, Lernhinweise |
-| Portfolio | Echt/Test/Paper/Shadow, Netto-Verkauf, Steuerreport, Depotübertrag, CSV-Import, Tranchenplan |
-| Journal | Trades mit Emotion & These, Trefferquote, Plantreue, Verhaltensmuster |
-| Replay | Kurse Kerze für Kerze nachspielen, Signal-Tracking mit Ausgang |
-| Kalender | Earnings/Fed/EZB-Termine mit Countdown und 7-Tage-Warnung |
-| Protokoll | Alle Ereignisse, Wochenreview, Fehlalarm-Markierung |
-| Hilfe | Arbeitsablauf, Seiten-Erklärungen, FAQ |
-| Einstellungen | Risiko, Brutal-Modus, Warnschwellen, Gebühren, Steuern (DE), BaFin-Liste, Backup |
+### Phase 3: Trading-Modi 
+- [ ] Daytrading (1min-60min Kerzen)
+- [ ] Swingtrading + Investment
+- [ ] Live-Scanner + Risk-Off Modus
+- [ ] Replay & Lern-Modus
 
-## Datenquellen (echt, kein Demo-Zwang)
+### Phase 4: Brutale Qualität
+- [ ] Brutal-erfolgreich-Modus
+- [ ] Akutwarnsystem
+- [ ] Shadow Portfolio
+- [ ] Akustische Warnungen
 
-- **Krypto** (BTC/ETH): Binance Public API - live, 24/7, kein Key nötig
-- **Aktien/ETFs**: Alpha Vantage - kostenlosen Key auf alphavantage.co holen,
-  in `.env.local` eintragen: `VITE_ALPHA_VANTAGE_KEY=deinkey`
-- **EUR/USD**: EZB-Referenzkurs via frankfurter.app
-- Fallback auf Demo-Daten nur, wenn keine API erreichbar ist
-
-## Kernprinzipien
-
-Kapitalerhalt vor Rendite • Begründung vor Signal • Ausstieg vor Einstieg •
-Netto-Ergebnis vor Brutto-Gewinn • Nicht-Handeln ist eine legitime Entscheidung.
-
-**Der Bot soll nicht überzeugen. Er soll prüfen.**
-
-## Entwicklung
+## 🚀 Quick Start
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
-npm run build        # Produktions-Build nach dist/
-npm run type-check   # TypeScript pruefen
-npm run webhooks     # TradingView-Webhook-Server (Port 3777)
-npm run desktop      # Electron-Fenster (nach build)
-npm run dist:win     # Windows-Installer bauen
+npm run dev
 ```
 
-## Hinweis
+Öffne http://localhost:5173
 
-Keine Anlage- oder Steuerberatung. Steuerwerte sind Näherungen nach deutscher
-Logik (§32d/§20/§23 EStG); verbindlich sind die Abrechnungen des Brokers.
+## 📁 Struktur
+
+```
+src/
+├── components/        # Wiederverwendbare UI-Komponenten
+├── pages/            # Seiten der App
+├── stores/           # Pinia State (zentrale Datenverwaltung)
+├── services/         # API + Business Logic
+│   ├── api.ts        # Asset-Daten Services
+│   └── analysisEngine.ts  # Professionelle Analyse-Engine
+├── types/            # TypeScript Definitionen
+├── router/           # Navigation
+├── styles/           # Tailwind CSS
+└── main.ts           # App Start
+```
+
+## 🎓 Kernprinzipien
+
+**Kapitalerhalt vor Rendite**
+**Begründung vor Signal**
+**Ausstieg vor Einstieg**
+**Risiko vor Gewinn**
+**Echtdaten vor Analyse**
+**Plausibilität vor Score**
+**Warnung vor Aktion**
+**Netto-Ergebnis vor Brutto-Gewinn**
+
+## 💡 Analyse-Engine
+
+Jede Analyse enthält:
+1. **Kernaussage** - Was ist die Idee?
+2. **Handelsmodus** - Daytrading/Swing/Investment?
+3. **Marktphase** - Wo stehen wir im Zyklus?
+4. **Technische Ausgangslage** - Charts, Levels, Muster
+5. **Fundamentale Lage** - Business, Gewinne, Bewertung
+6. **Nachrichtenlage** - News, Events, Catalyst
+7. **Einstiegsthese** - Warum könnte man einsteigen?
+8. **Ausstiegsthese** - Wann muss man raus?
+9. **Ungültigkeitsbedingung** - Wann ist die Idee falsch?
+10. **Gegenargumente** - Was spricht dagegen?
+11. **Chance-Risiko-Verhältnis** - Stop und Ziel klar?
+12. **Konfidenz** - Wie sicher sind wir?
+13. **Szenarien** - bullisch/neutral/bärisch/stress
+14. **Warnungen** - Rote Flaggen erkennen
+15. **Entscheidung** - buy/sell/halten/beobachten/finger weg
+
+## ⚠️ Warnsystem
+
+| Farbe | Bedeutung | Aktion |
+|-------|-----------|--------|
+| 🟢 Grün | Normale Lage | Trading erlaubt |
+| 🟡 Gelb | Erhöhte Vorsicht | Kleinere Position |
+| 🟠 Orange | Hohes Risiko | Nur bei Signal |
+| 🔴 Rot | FINGER WEG | KEIN Live-Trading |
+| ⚫ Schwarz | SCAM-VERDACHT | BLOCKIERT |
+
+## 💰 Gebührenmodelle
+
+Vordefiniert:
+- **Trade Republic**: 1€ Buy/Sell
+- **Interactive Brokers**: Prozentual (komplexer)
+- **Kraken**: 0,26% - 0,16% (Volumen-abhängig)
+- **Binance**: 0,1% Standard
+
+## 🇩🇪 Deutsche Steuerlogik
+
+- Kapitalertragsteuer: **26,375%**
+- Solidaritätszuschlag: **5,5%**
+- Sparer-Pauschbetrag: **1.000€**
+- Krypto-Haltedauer: **365 Tage** → steuerfrei
+- ETF-Teilfreistellung: **0-30%** (konfigurierbar)
+
+## 📊 Szenarien (Pflicht in jeder Analyse)
+
+Jede Analyse muss 5 Szenarien adressieren:
+
+```
+Bullisch:    Kurs bricht aus Richtung Ziel
+Neutral:     Range-Bewegung, kein Trade
+Bärisch:     Setup ungültig, Stop getroffen
+Stress:      Markt-Schock, Gap-down
+Ungültig:    Original-Bedingung verloren
+```
+
+## 🎯 Entscheidungslogik
+
+```
+Chance-Risiko > 2:0 && Konfidenz > 75%  → BUY
+Chance-Risiko > 1,5 && Konfidenz > 70%  → BUY_ON_TRIGGER
+Chance-Risiko < 1:1                      → FINGER_WEG
+Konfidenz < 50%                          → WATCH
+```
+
+## 🔄 Trading-Modi Übersicht
+
+### Daytrading
+- Zeitraum: **Heute** (aktueller Handelstag)
+- Kerzen: **1min bis 60min**
+- Fokus: Intraday-Bewegungen, Eröffnungen, Gaps
+
+### Swingtrading  
+- Zeitraum: **1-2 Wochen**
+- Kerzen: **4h bis 1 Tag**
+- Fokus: Multi-Tage Trends, Support/Resistance
+
+### Investment
+- Zeitraum: **Monate bis Jahre**
+- Kerzen: **1 Woche bis 1 Monat**
+- Fokus: Fundamentals, Long-Term Trends
+
+## 📝 Geplante APIs
+
+- **Real-Time**: Alpha Vantage, IEX Cloud, Finnhub
+- **Historisch**: Yahoo Finance, Polygon.io
+- **Krypto**: Binance, Kraken, CoinGecko
+- **News**: NewsAPI, IEX Cloud
+- **FX**: OpenExchangeRates, XE.com
+- **Fundamentals**: Alpha Vantage, Finnhub
+
+## 🧪 Testing
+
+```bash
+npm run type-check
+npm run build
+```
+
+## 👨‍💻 Autor
+
+**André Schlichting** | Trading Decision Lab v0.1
+Fokus: **Brutale Erfolgsrate statt blinde Signale**
+
+Thema offen? Nächste Ausbaustufen:
+- **0.4**: News-/Makro-Kalender
+- **0.7**: TradingView-Webhooks  
+- **3.0**: Broker-API mit manueller Bestätigung
+
+---
+
+**Leitmotto**: Der Bot soll nicht überzeugen. Er soll **prüfen.**

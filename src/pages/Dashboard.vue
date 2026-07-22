@@ -30,6 +30,9 @@
     <!-- TradingView-Webhooks (Ausbaustufe 0.7) -->
     <WebhookSignals />
 
+    <!-- Wirtschafts-News + BaFin-Abgleich (via lokalen Server) -->
+    <NewsFeed />
+
     <!-- Anstehende wichtige Termine -->
     <div v-if="store.upcomingEvents.length > 0" class="card border-l-4 border-blue-400">
       <div class="flex justify-between items-center mb-2">
@@ -210,6 +213,7 @@ import { apiService } from '../services/api'
 import StatCard from '../components/StatCard.vue'
 import PortfolioChart from '../components/PortfolioChart.vue'
 import MarketLight from '../components/MarketLight.vue'
+import NewsFeed from '../components/NewsFeed.vue'
 
 const store = useAppStore()
 const router = useRouter()
