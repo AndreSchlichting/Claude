@@ -10,6 +10,7 @@ export interface Asset {
   name: string
   symbol: string
   isin?: string
+  wkn?: string
   binanceSymbol?: string
   assetClass: AssetClass
   currentPrice: number
@@ -188,6 +189,26 @@ export interface CalendarEvent {
   category: 'earnings' | 'zentralbank' | 'makro' | 'krypto' | 'sonstiges'
   assetSymbol?: string
   note?: string
+}
+
+// Lokaler Daten-Speicher je Asset (Traffic-Reduktion + Wissensarchiv)
+export type VaultDocKind = 'analyse' | 'bericht' | 'ereignis' | 'notiz' | 'kursdaten'
+
+export interface VaultDocument {
+  id: string
+  date: string            // JJJJ-MM-TT
+  kind: VaultDocKind
+  title: string
+  content: string         // Text, Link oder JSON (bei kursdaten)
+  source?: string
+}
+
+export interface VaultRecord {
+  canonicalId: string     // eindeutige ID: ISIN > WKN > Klasse:Symbol
+  name: string
+  symbol: string
+  aliases: string[]       // alle bekannten Kennungen (ISIN, WKN, Symbol) - verhindert Duplikate
+  docs: VaultDocument[]
 }
 
 // Fundamental-Dashboard nach HKCM-Deep-Dive-Vorlage

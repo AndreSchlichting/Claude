@@ -101,8 +101,10 @@ const navItems = computed(() => [
   { to: '/portfolio', label: L('Portfolio', 'Portfolio') },
   { to: '/journal', label: L('Journal', 'Journal') },
   { to: '/replay', label: L('Replay', 'Replay') },
+  { to: '/training', label: L('Training', 'Training') },
   { to: '/kalender', label: L('Kalender', 'Calendar') },
-  { to: '/protokoll', label: L('Protokoll', 'Event Log') }
+  { to: '/protokoll', label: L('Protokoll', 'Event Log') },
+  { to: '/daten', label: L('Daten', 'Data') }
 ])
 
 const totalPositions = computed(() => {

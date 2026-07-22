@@ -377,6 +377,9 @@ const refreshScanner = async () => {
 
     // Paper-Broker: fällige Stops/Ziele automatisch ausführen (3.0-Simulation)
     store.settlePaperPositions()
+
+    // Watchlist-Assets lokal archivieren (max. 1x täglich, spart Traffic)
+    store.snapshotWatchlist()
   } finally {
     scanning.value = false
   }
