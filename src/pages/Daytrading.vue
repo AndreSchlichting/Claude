@@ -18,7 +18,7 @@
     </div>
 
     <!-- Asset Selector + Kerzenintervall (§135/§136) -->
-    <div class="card space-y-4">
+    <div class="card grid grid-cols-1 lg:grid-cols-3 gap-3">
       <div>
         <label class="block text-sm font-medium mb-2">Asset auswählen</label>
         <select v-model="selectedAssetId" class="input-field w-full">

@@ -79,6 +79,40 @@ async function loadFeed(urls, cacheObj) {
   return cacheObj
 }
 
+// --- Stooq-Proxy: kostenlose Aktien-/Index-Kurse ohne API-Key ---
+// (serverseitig, weil stooq.com kein CORS erlaubt)
+const stooqCache = new Map()
+const STOOQ_TTL = 10 * 60 * 1000
+
+async function stooqHistory(symbol) {
+  const key = `hist_${symbol}`
+  const cached = stooqCache.get(key)
+  if (cached && Date.now() - cached.t < STOOQ_TTL) return cached.data
+  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&i=d`
+  const resp = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  const csv = await resp.text()
+  const rows = csv.trim().split('\n').slice(1)
+    .map(line => {
+      const [date, open, high, low, close, volume] = line.split(',')
+      return { date, open: +open, high: +high, low: +low, close: +close, volume: +volume || 0 }
+    })
+    .filter(r => r.date && !isNaN(r.close))
+  stooqCache.set(key, { t: Date.now(), data: rows })
+  return rows
+}
+
+// Leitindizes: USA, Deutschland, Japan, China, Russland, England
+const MARKET_INDICES = [
+  { symbol: '^spx', name: 'S&P 500', country: 'USA', flag: '🇺🇸' },
+  { symbol: '^dji', name: 'Dow Jones', country: 'USA', flag: '🇺🇸' },
+  { symbol: '^ndq', name: 'Nasdaq 100', country: 'USA', flag: '🇺🇸' },
+  { symbol: '^dax', name: 'DAX 40', country: 'Deutschland', flag: '🇩🇪' },
+  { symbol: '^nkx', name: 'Nikkei 225', country: 'Japan', flag: '🇯🇵' },
+  { symbol: '^shc', name: 'Shanghai Comp.', country: 'China', flag: '🇨🇳' },
+  { symbol: '^ukx', name: 'FTSE 100', country: 'England', flag: '🇬🇧' },
+  { symbol: '^rts', name: 'RTS Index', country: 'Russland', flag: '🇷🇺' }
+]
+
 const server = http.createServer((req, res) => {
   // CORS: die App (localhost:5173) darf lesen
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -131,6 +165,41 @@ const server = http.createServer((req, res) => {
     loadFeed([BAFIN_RSS], bafinCache).then(cache => {
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ items: cache.items, error: cache.error }))
+    })
+    return
+  }
+
+  // Aktien-/Index-Historie via Stooq (z.B. /stooq/aapl.us)
+  if (req.method === 'GET' && req.url.startsWith('/stooq/')) {
+    const symbol = decodeURIComponent(req.url.slice('/stooq/'.length))
+    stooqHistory(symbol).then(rows => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ symbol, rows: rows.slice(-250) }))
+    }).catch(e => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ symbol, rows: [], error: e.message }))
+    })
+    return
+  }
+
+  // Markt-Überblick: Leitindizes mit Veränderung zum Vortag
+  if (req.method === 'GET' && req.url === '/markets') {
+    Promise.all(MARKET_INDICES.map(async idx => {
+      try {
+        const rows = await stooqHistory(idx.symbol)
+        const last = rows[rows.length - 1]
+        const prev = rows[rows.length - 2]
+        if (!last || !prev) throw new Error('keine Daten')
+        return {
+          ...idx, value: last.close, date: last.date,
+          changePercent: ((last.close - prev.close) / prev.close) * 100
+        }
+      } catch {
+        return { ...idx, value: null, changePercent: null }
+      }
+    })).then(list => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ indices: list }))
     })
     return
   }

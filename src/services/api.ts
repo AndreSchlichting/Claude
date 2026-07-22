@@ -230,6 +230,40 @@ function parseAlphaVantageData(data: any, symbol: string): PricePoint[] {
   return points.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 }
 
+// CoinGecko-Fallback für Krypto (kostenlos, CORS-freundlich, kein Key)
+const COINGECKO_IDS: Record<string, string> = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', XRP: 'ripple', ADA: 'cardano', DOGE: 'dogecoin', DOT: 'polkadot', LTC: 'litecoin', LINK: 'chainlink', AVAX: 'avalanche-2' }
+
+async function coingeckoPrice(symbol: string): Promise<number> {
+  const id = COINGECKO_IDS[symbol.toUpperCase()]
+  if (!id) return 0
+  try {
+    const resp = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+      params: { ids: id, vs_currencies: 'usd' }, timeout: 8000
+    })
+    return resp.data?.[id]?.usd || 0
+  } catch { return 0 }
+}
+
+// Lokaler Server (npm run webhooks) als Stooq-Proxy für Aktien/Indizes ohne Key
+async function localStooqHistory(stooqSymbol: string): Promise<PricePoint[]> {
+  try {
+    const resp = await axios.get(`http://localhost:3777/stooq/${encodeURIComponent(stooqSymbol)}`, { timeout: 12000 })
+    const rows = resp.data?.rows || []
+    return rows.map((r: any) => ({
+      timestamp: new Date(r.date), open: r.open, high: r.high, low: r.low,
+      close: r.close, volume: r.volume || 0, interval: '1d'
+    }))
+  } catch { return [] }
+}
+
+/** Stooq-Symbol für ein Asset ableiten (US-Aktien: aapl.us, DE: .de) */
+function stooqSymbolFor(asset: Asset): string {
+  if (asset.exchange && /xetra|frankfurt|germany/i.test(asset.exchange)) return `${asset.symbol.toLowerCase()}.de`
+  return `${asset.symbol.toLowerCase()}.us`
+}
+
+export interface FxRate { pair: string; label: string; rate: number; changePercent: number | null }
+
 export interface SymbolSearchResult {
   symbol: string
   name: string
@@ -349,6 +383,51 @@ export const apiService = {
     }
   },
 
+  /**
+   * Wechselkurs-Überblick: EUR gegen USD/JPY/GBP/CHF (EZB, mit Vortagesvergleich)
+   * und RUB (open.er-api.com, da die EZB seit 2022 keinen RUB-Referenzkurs stellt)
+   */
+  async getFxOverview(): Promise<FxRate[]> {
+    const out: FxRate[] = []
+    try {
+      const [latest, week] = await Promise.all([
+        axios.get('https://api.frankfurter.app/latest', { params: { from: 'EUR', to: 'USD,JPY,GBP,CHF' }, timeout: 8000 }),
+        axios.get('https://api.frankfurter.app/latest', { params: { from: 'EUR', to: 'USD,JPY,GBP,CHF', base: 'EUR' }, timeout: 8000 }).catch(() => null)
+      ])
+      const prevResp = await axios.get(
+        `https://api.frankfurter.app/${new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0]}`,
+        { params: { from: 'EUR', to: 'USD,JPY,GBP,CHF' }, timeout: 8000 }
+      ).catch(() => null)
+      const rates = latest.data?.rates || {}
+      const prev = prevResp?.data?.rates || {}
+      const labels: Record<string, string> = { USD: 'Dollar-Euro', JPY: 'Yen-Euro', GBP: 'Pfund-Euro', CHF: 'Franken-Euro' }
+      Object.entries(rates).forEach(([cur, rate]: [string, any]) => {
+        out.push({
+          pair: `EUR/${cur}`, label: labels[cur] || cur, rate,
+          changePercent: prev[cur] ? ((rate - prev[cur]) / prev[cur]) * 100 : null
+        })
+      })
+      void week
+    } catch { /* EZB nicht erreichbar */ }
+
+    // RUB separat (kein EZB-Referenzkurs mehr)
+    try {
+      const resp = await axios.get('https://open.er-api.com/v6/latest/EUR', { timeout: 8000 })
+      const rub = resp.data?.rates?.RUB
+      if (rub) out.push({ pair: 'EUR/RUB', label: 'Rubel-Euro', rate: rub, changePercent: null })
+    } catch { /* optional */ }
+
+    return out
+  },
+
+  /** Leitindizes (USA/DE/JP/CN/RU/UK) via lokalen Server + Stooq */
+  async getMarketIndices(): Promise<Array<{ symbol: string; name: string; country: string; flag: string; value: number | null; changePercent: number | null }>> {
+    try {
+      const resp = await axios.get('http://localhost:3777/markets', { timeout: 15000 })
+      return resp.data?.indices || []
+    } catch { return [] }
+  },
+
   // Assets
   async getAssets(): Promise<Asset[]> {
     const assets = Object.values(ASSET_REGISTRY)
@@ -403,14 +482,17 @@ export const apiService = {
     const dataType = isIntraday ? 'TIME_SERIES_INTRADAY' : 'TIME_SERIES_DAILY'
     const extraParams: Record<string, string> = isIntraday ? { interval } : {}
     const data = await fetchFromAlphaVantage(asset.symbol, dataType, extraParams)
-
-    if (!data) {
-      // Fallback zu Demo-Daten wenn API nicht verfügbar
-      return this._generateDemoHistory(limit)
+    if (data) {
+      const points = parseAlphaVantageData(data, asset.symbol)
+      if (points.length > 0) return points.slice(-limit)
     }
 
-    const points = parseAlphaVantageData(data, asset.symbol)
-    return points.slice(-limit)
+    // Fallback: Stooq via lokalen Server (npm run webhooks) - kostenlos, ohne Key
+    const stooq = await localStooqHistory(stooqSymbolFor(asset))
+    if (stooq.length > 0) return stooq.slice(-limit)
+
+    // Letzter Ausweg: Demo-Daten (deutlich als solche erkennbar)
+    return this._generateDemoHistory(limit)
   },
 
   // Aktueller Kurs - echte Daten
@@ -418,24 +500,28 @@ export const apiService = {
     const asset = ASSET_REGISTRY[assetId]
     if (!asset) return 0
 
-    // Krypto: Binance Live-Preis
-    if (BINANCE_MAP[assetId]) {
-      const price = await fetchBinancePrice(BINANCE_MAP[assetId])
-      if (price > 0) return price
+    // Krypto: Binance Live-Preis, Fallback CoinGecko (falls Binance blockiert)
+    if (asset.assetClass === 'crypto') {
+      if (BINANCE_MAP[assetId]) {
+        const price = await fetchBinancePrice(BINANCE_MAP[assetId])
+        if (price > 0) return price
+      }
+      const cg = await coingeckoPrice(asset.symbol)
+      if (cg > 0) return cg
     }
 
     const data = await fetchFromAlphaVantage(asset.symbol, 'TIME_SERIES_DAILY')
+    const timeSeries = data?.['Time Series (Daily)']
+    if (timeSeries) {
+      const latestDate = Object.keys(timeSeries)[0]
+      const price = parseFloat(timeSeries[latestDate]?.['4. close'])
+      if (price > 0) return price
+    }
 
-    if (!data) return 0
-
-    const timeSeries = data['Time Series (Daily)']
-    if (!timeSeries) return 0
-
-    // Neuester Eintrag
-    const latestDate = Object.keys(timeSeries)[0]
-    const latestData = timeSeries[latestDate]
-
-    return parseFloat(latestData['4. close']) || 0
+    // Fallback: Stooq via lokalen Server
+    const stooq = await localStooqHistory(stooqSymbolFor(asset))
+    if (stooq.length > 0) return stooq[stooq.length - 1].close
+    return 0
   },
 
   // Demo-History für Fallback
