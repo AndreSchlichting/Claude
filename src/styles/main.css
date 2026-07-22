@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+/* Kompaktes Layout: kleinere Basis-Schrift skaliert alle Abstände mit */
+html {
+  font-size: 14px;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apple-Glass Hintergrund: hell und ruhig, damit Text auf den Karten lesbar bleibt */
+.glass-bg {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(99, 179, 237, 0.20), transparent 60%),
+    radial-gradient(1000px 500px at 85% 10%, rgba(16, 185, 129, 0.14), transparent 55%),
+    radial-gradient(900px 600px at 50% 110%, rgba(167, 139, 250, 0.12), transparent 60%),
+    linear-gradient(160deg, #f4f8fc 0%, #f1f5f9 50%, #f2f8f4 100%);
+  background-attachment: fixed;
+}
+
+.dark .glass-bg {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(56, 129, 216, 0.22), transparent 60%),
+    radial-gradient(1000px 500px at 85% 10%, rgba(16, 185, 129, 0.15), transparent 55%),
+    radial-gradient(900px 600px at 50% 110%, rgba(139, 92, 246, 0.16), transparent 60%),
+    linear-gradient(160deg, #0b1220 0%, #0e1626 55%, #0b1a18 100%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .btn {
+    @apply px-3 py-1.5 rounded-lg font-medium transition-all;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-emerald-600 shadow shadow-emerald-500/20;
+  }
+
+  .btn-secondary {
+    @apply bg-white/80 text-gray-900 hover:bg-white dark:bg-white/10 dark:text-white dark:hover:bg-white/20 border border-gray-300/70 dark:border-white/10;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-red-600 shadow shadow-red-500/20;
+  }
+
+  /* Glas-Karte: deutlich deckender fuer besseren Kontrast, kompaktes Padding */
+  .card {
+    @apply rounded-xl p-4
+      bg-white/85 dark:bg-slate-800/80
+      backdrop-blur-xl
+      border border-white/70 dark:border-white/10
+      shadow-[0_4px_16px_rgba(31,38,135,0.10)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)]
+      text-gray-900 dark:text-gray-100;
+  }
+
+  .glass-header {
+    @apply sticky top-0 z-40
+      bg-white/85 dark:bg-slate-900/85
+      backdrop-blur-xl
+      border-b border-gray-200/80 dark:border-white/10
+      shadow-[0_2px_12px_rgba(31,38,135,0.08)];
+  }
+
+  .input-field {
+    @apply px-2.5 py-1.5 rounded-lg
+      bg-white dark:bg-slate-900/60
+      border border-gray-300 dark:border-white/15
+      text-gray-900 dark:text-white
+      focus:ring-2 focus:ring-primary/40 focus:border-primary/40;
+  }
+
+  /* Glas-Chip für Toggle-Buttons (Sprache/Währung) */
+  .glass-chip {
+    @apply px-2.5 py-1 rounded-lg font-medium text-sm transition-all;
+  }
+  .glass-chip-active {
+    @apply bg-primary text-white shadow shadow-emerald-500/30;
+  }
+  .glass-chip-inactive {
+    @apply bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 hover:bg-white border border-gray-300/60 dark:border-white/10;
+  }
+}
+
+/* Puls-Animation für akute Warnungen (§125.3) */
+@keyframes warn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  50% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+}
+.warn-pulse {
+  animation: warn-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes warn-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.warn-blink {
+  animation: warn-blink 1s ease-in-out infinite;
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e1626"/>
+      <stop offset="1" stop-color="#0b1a18"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Kerzen: rot/grün -->
+  <line x1="34" y1="30" x2="34" y2="98" stroke="#16a34a" stroke-width="3"/>
+  <rect x="26" y="48" width="16" height="34" rx="2" fill="#16a34a"/>
+  <line x1="64" y1="22" x2="64" y2="86" stroke="#dc2626" stroke-width="3"/>
+  <rect x="56" y="34" width="16" height="30" rx="2" fill="#dc2626"/>
+  <line x1="94" y1="36" x2="94" y2="106" stroke="#16a34a" stroke-width="3"/>
+  <rect x="86" y="52" width="16" height="40" rx="2" fill="#16a34a"/>
+</svg>
