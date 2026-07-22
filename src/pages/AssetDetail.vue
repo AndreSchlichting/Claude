@@ -40,6 +40,9 @@
       :title="`${asset?.symbol} - Kerzenchart in ${store.activeCurrency === 'EUR' ? '€' : 'US-$'}`"
     />
 
+    <!-- Fundamental-Dashboard (HKCM-Vorlage) -->
+    <FundamentalDashboard v-if="asset" :asset="asset" />
+
     <!-- Preis-Alerts -->
     <div class="card">
       <h2 class="text-lg font-bold mb-3">🔔 Preis-Alerts</h2>
@@ -158,6 +161,7 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import CandleChart from '../components/CandleChart.vue'
+import FundamentalDashboard from '../components/FundamentalDashboard.vue'
 
 const route = useRoute()
 const store = useAppStore()

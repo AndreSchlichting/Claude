@@ -24,6 +24,9 @@
       />
     </div>
 
+    <!-- Asset-Suche: Aktien/ETFs/Krypto finden und hinzufügen -->
+    <AssetSearch />
+
     <!-- Marktampel / Regime-Filter -->
     <MarketLight />
 
@@ -214,6 +217,7 @@ import StatCard from '../components/StatCard.vue'
 import PortfolioChart from '../components/PortfolioChart.vue'
 import MarketLight from '../components/MarketLight.vue'
 import NewsFeed from '../components/NewsFeed.vue'
+import AssetSearch from '../components/AssetSearch.vue'
 
 const store = useAppStore()
 const router = useRouter()

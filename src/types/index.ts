@@ -10,6 +10,7 @@ export interface Asset {
   name: string
   symbol: string
   isin?: string
+  binanceSymbol?: string
   assetClass: AssetClass
   currentPrice: number
   currency: Currency
@@ -187,6 +188,38 @@ export interface CalendarEvent {
   category: 'earnings' | 'zentralbank' | 'makro' | 'krypto' | 'sonstiges'
   assetSymbol?: string
   note?: string
+}
+
+// Fundamental-Dashboard nach HKCM-Deep-Dive-Vorlage
+export type FundamentalVerdict = 'kaufenswert' | 'beobachten' | 'halten' | 'meiden' | 'offen'
+
+export interface FundamentalData {
+  assetId: string
+  updatedAt: Date
+  // Investmentpass
+  profil: string              // z.B. "Fintech-Plattform"
+  bewertungLabel: string      // z.B. "fair bis attraktiv"
+  these: string               // Investmentthese in einem Satz
+  ersteinschaetzung: string   // Ersteinschaetzung / Fazit
+  // Kennzahlen (als formatierte Strings, Quelle egal: API oder manuell)
+  marktkapitalisierung?: string
+  umsatz?: string
+  umsatzwachstum?: string
+  bruttomarge?: string
+  operativeMarge?: string
+  freeCashflow?: string
+  liquiditaet?: string
+  kgv?: string
+  kuv?: string
+  dividende?: string
+  // Qualitative Abschnitte (HKCM-Fragenlogik)
+  geschaeftsmodell: string    // Wie verdient X Geld?
+  burggraben: string          // Warum gewinnt X?
+  wachstumstreiber: string    // Woher kommt zukuenftiges Wachstum?
+  chancen: string[]
+  risiken: string[]
+  urteil: FundamentalVerdict
+  quellen?: string
 }
 
 // Tranchenplan: gestaffelter Ein- und Ausstieg
