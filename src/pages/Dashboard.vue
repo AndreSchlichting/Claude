@@ -1,5 +1,8 @@
 <template>
   <div class="space-y-3">
+    <!-- Maerkte & Devisen: Leitindizes + Wechselkurse -->
+    <MarketOverview />
+
     <!-- Quick Stats -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
@@ -218,6 +221,7 @@ import PortfolioChart from '../components/PortfolioChart.vue'
 import MarketLight from '../components/MarketLight.vue'
 import NewsFeed from '../components/NewsFeed.vue'
 import AssetSearch from '../components/AssetSearch.vue'
+import MarketOverview from '../components/MarketOverview.vue'
 
 const store = useAppStore()
 const router = useRouter()

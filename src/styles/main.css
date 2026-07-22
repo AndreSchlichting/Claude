@@ -40,10 +40,9 @@ body {
 
 .dark .glass-bg {
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(56, 129, 216, 0.22), transparent 60%),
-    radial-gradient(1000px 500px at 85% 10%, rgba(16, 185, 129, 0.15), transparent 55%),
-    radial-gradient(900px 600px at 50% 110%, rgba(139, 92, 246, 0.16), transparent 60%),
-    linear-gradient(160deg, #0b1220 0%, #0e1626 55%, #0b1a18 100%);
+    radial-gradient(1100px 500px at 20% -10%, rgba(16, 185, 129, 0.07), transparent 60%),
+    radial-gradient(900px 500px at 85% 5%, rgba(212, 175, 55, 0.05), transparent 55%),
+    linear-gradient(165deg, #0a0e18 0%, #0d1220 55%, #0a1015 100%);
   background-attachment: fixed;
 }
 
@@ -67,18 +66,18 @@ body {
   /* Glas-Karte: deutlich deckender fuer besseren Kontrast, kompaktes Padding */
   .card {
     @apply rounded-xl p-4
-      bg-white/85 dark:bg-slate-800/80
+      bg-white/85 dark:bg-[#111827]/95
       backdrop-blur-xl
-      border border-white/70 dark:border-white/10
+      border border-white/70 dark:border-white/[0.07]
       shadow-[0_4px_16px_rgba(31,38,135,0.10)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)]
       text-gray-900 dark:text-gray-100;
   }
 
   .glass-header {
     @apply sticky top-0 z-40
-      bg-white/85 dark:bg-slate-900/85
+      bg-white/85 dark:bg-[#0b1018]/95
       backdrop-blur-xl
-      border-b border-gray-200/80 dark:border-white/10
+      border-b border-gray-200/80 dark:border-white/[0.07]
       shadow-[0_2px_12px_rgba(31,38,135,0.08)];
   }
 

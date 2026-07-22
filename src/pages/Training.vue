@@ -1,13 +1,65 @@
 <template>
   <div class="space-y-3">
     <div class="card">
-      <h1 class="text-xl font-bold mb-1">Kerzenmuster-Training</h1>
-      <p class="text-gray-600 dark:text-gray-400">
-        {{ PATTERNS.length }} Muster in der Datenbank (TA-Lib-orientiert, erweiterbar) -
-        Muster auswählen, Trainingsprogramm generieren oder im Quiz testen
-      </p>
+      <h1 class="text-xl font-bold mb-1">Trading-Training</h1>
+      <div class="flex gap-2 mt-2">
+        <button @click="area = 'kerzen'" :class="['glass-chip', area === 'kerzen' ? 'glass-chip-active' : 'glass-chip-inactive']">
+          🕯 Kerzenmuster ({{ PATTERNS.length }})
+        </button>
+        <button @click="area = 'bewertung'" :class="['glass-chip', area === 'bewertung' ? 'glass-chip-active' : 'glass-chip-inactive']">
+          📊 Bewertung - Band 2 ({{ VALUATION_LESSONS.length }})
+        </button>
+      </div>
     </div>
 
+    <!-- ============ BEWERTUNGS-TRAINER (Boersenbibel Band 2) ============ -->
+    <template v-if="area === 'bewertung'">
+      <div v-for="(l, idx) in VALUATION_LESSONS" :key="l.id" class="card border-l-4 border-indigo-400">
+        <div class="flex justify-between items-start flex-wrap gap-2">
+          <div>
+            <p class="text-xs text-gray-500">Lektion {{ idx + 1 }} / {{ VALUATION_LESSONS.length }} • {{ l.kategorie }}</p>
+            <h3 class="font-bold">{{ l.title }}</h3>
+            <p v-if="l.kurzformel" class="text-xs font-mono text-indigo-600 dark:text-indigo-300 mt-0.5">{{ l.kurzformel }}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 text-sm">
+          <div class="p-2.5 rounded-xl bg-white/40 dark:bg-white/5">
+            <p class="text-xs font-bold text-gray-500">WAS IST DAS?</p>
+            <p>{{ l.erklaerung }}</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30">
+            <p class="text-xs font-bold text-blue-800 dark:text-blue-300">SO LIEST MAN ES</p>
+            <p>{{ l.interpretation }}</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30">
+            <p class="text-xs font-bold text-amber-800 dark:text-amber-300">STOLPERFALLE</p>
+            <p>{{ l.stolperfalle }}</p>
+          </div>
+        </div>
+        <!-- Mini-Quiz je Lektion -->
+        <div class="mt-2 p-2.5 rounded-xl bg-white/40 dark:bg-white/5 text-sm">
+          <p class="font-bold text-xs text-gray-500 mb-1.5">🎯 VERSTÄNDNISFRAGE: {{ l.quiz.frage }}</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+            <button v-for="(opt, oi) in l.quiz.optionen" :key="oi"
+              @click="valAnswers[l.id] = oi"
+              :disabled="valAnswers[l.id] !== undefined"
+              class="text-left p-2 rounded-lg text-xs font-medium transition-colors"
+              :class="valAnswers[l.id] !== undefined
+                ? (oi === l.quiz.richtig ? 'bg-green-600 text-white'
+                   : oi === valAnswers[l.id] ? 'bg-red-600 text-white' : 'bg-white/40 dark:bg-white/5 opacity-50')
+                : 'bg-white/60 dark:bg-white/10 hover:bg-primary/20'">
+              {{ opt }}
+            </button>
+          </div>
+          <p v-if="valAnswers[l.id] !== undefined" class="text-xs mt-2"
+            :class="valAnswers[l.id] === l.quiz.richtig ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'">
+            {{ valAnswers[l.id] === l.quiz.richtig ? '✓ Richtig! ' : '✗ ' }}{{ l.quiz.erklaerung }}
+          </p>
+        </div>
+      </div>
+    </template>
+
+    <template v-if="area === 'kerzen'">
     <!-- Muster-Auswahl -->
     <div class="card">
       <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
@@ -126,6 +178,7 @@
         </div>
       </div>
     </template>
+    </template>
   </div>
 </template>
 
@@ -135,11 +188,13 @@ import { useAppStore } from '../stores'
 import { PATTERNS } from '../services/patternDb'
 import type { CandlePattern, PatternSignal } from '../services/patternDb'
 import PatternSvg from '../components/PatternSvg.vue'
+import { VALUATION_LESSONS } from '../services/valuationDb'
 
 const store = useAppStore()
 
 const selected = ref<string[]>(PATTERNS.map(p => p.id))
-const mode = ref<'' | 'lernen' | 'quiz'>('')
+const mode = ref<'' | 'lernen' | 'quiz'>('lernen')  // startet direkt im Lernprogramm
+const area = ref<'kerzen' | 'bewertung'>('kerzen')
 
 const selectedPatterns = computed(() => PATTERNS.filter(p => selected.value.includes(p.id)))
 
@@ -156,6 +211,7 @@ interface QuizQuestion { pattern: CandlePattern; options: CandlePattern[] }
 const quizQuestion = ref<QuizQuestion | null>(null)
 const quizAnswer = ref<string | null>(null)
 const quizStats = ref({ correct: 0, total: 0 })
+const valAnswers = ref<Record<string, number>>({})
 
 const startQuiz = () => {
   mode.value = 'quiz'

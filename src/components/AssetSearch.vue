@@ -60,6 +60,7 @@ import { ref } from 'vue'
 import { useAppStore } from '../stores'
 import { apiService } from '../services/api'
 import type { SymbolSearchResult } from '../services/api'
+import { searchCatalog } from '../services/assetCatalog'
 import type { Asset } from '../types'
 
 const store = useAppStore()
@@ -76,15 +77,44 @@ const search = async () => {
   searching.value = true
   searched.value = false
   lastQuery.value = query.value
+
+  // 1. Sofort: Katalog-Vorschlaege (fuzzy, auch bei Tippfehlern, ohne API)
+  const catalogHits: SymbolSearchResult[] = searchCatalog(query.value).map(e => ({
+    symbol: e.symbol, name: e.name,
+    type: e.type === 'index' ? 'etf' : e.type,
+    region: e.exchange, currency: e.currency, binanceSymbol: e.binanceSymbol
+  }))
+  results.value = catalogHits
+  hint.value = catalogHits.length ? '' : 'Keine Katalog-Treffer - versuche die Online-Suche...'
+
+  // 2. Zusaetzlich: Online-Suche (Binance + Alpha Vantage), Duplikate raus
   try {
     const res = await apiService.searchSymbols(query.value)
-    results.value = res.results
-    hint.value = res.hint
+    const merged = [...catalogHits]
+    res.results.forEach(r => {
+      if (!merged.some(m => m.symbol === r.symbol && m.type === r.type)) merged.push(r)
+    })
+    results.value = merged
+    if (res.hint && merged.length === 0) hint.value = res.hint
     searched.value = true
   } finally {
     searching.value = false
+    searched.value = true
   }
 }
+
+// Vorschlaege live beim Tippen (nur Katalog, kein Traffic)
+import { watch as _watch } from 'vue'
+_watch(query, (q) => {
+  if (!q.trim()) { results.value = []; return }
+  if (!searching.value) {
+    results.value = searchCatalog(q).map(e => ({
+      symbol: e.symbol, name: e.name,
+      type: e.type === 'index' ? 'etf' : e.type,
+      region: e.exchange, currency: e.currency, binanceSymbol: e.binanceSymbol
+    }))
+  }
+})
 
 const assetIdFor = (r: SymbolSearchResult) =>
   `${r.type}-${r.symbol.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
