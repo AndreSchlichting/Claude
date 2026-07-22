@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { PaperBroker } from '../services/paperBroker'
 import { apiService } from '../services/api'
 import { ref, computed, watch } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan, FundamentalData } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan, FundamentalData, VaultRecord, VaultDocument } from '../types'
 
 const STORAGE_KEY = 'tdl_state_v1'
 
@@ -41,6 +41,7 @@ export const useAppStore = defineStore('app', () => {
   const calendarEvents = ref<CalendarEvent[]>([])
   const tranchePlans = ref<TranchePlan[]>([])
   const fundamentals = ref<Record<string, FundamentalData>>({})
+  const assetVault = ref<Record<string, VaultRecord>>({})
   // Echter EUR/USD-Kurs (EZB via frankfurter.app), wird beim Start geladen
   const usdPerEur = ref(1.09)
   const analyses = ref<Analysis[]>([])
@@ -283,6 +284,71 @@ export const useAppStore = defineStore('app', () => {
     tranchePlans.value = tranchePlans.value.filter(p => p.id !== id)
   }
 
+  // --- Asset-Datenspeicher (Vault): eindeutige ID, keine Duplikate ---
+  /** Kanonische ID: ISIN > WKN > Assetklasse:Symbol - zwei Nummern, EIN Unternehmen */
+  const canonicalIdFor = (asset: Asset): string => {
+    return (asset.isin || asset.wkn || `${asset.assetClass}:${asset.symbol}`).toUpperCase()
+  }
+
+  /** Findet den Datensatz ueber ALLE bekannten Kennungen (Alias-Abgleich) */
+  const resolveVaultRecord = (asset: Asset): VaultRecord => {
+    const ids = [asset.isin, asset.wkn, asset.symbol, `${asset.assetClass}:${asset.symbol}`]
+      .filter(Boolean).map(x => String(x).toUpperCase())
+    // Existiert schon ein Record mit einer dieser Kennungen?
+    for (const rec of Object.values(assetVault.value)) {
+      if (rec.aliases.some(a => ids.includes(a))) {
+        // Neue Kennungen als Aliase ergaenzen
+        ids.forEach(id => { if (!rec.aliases.includes(id)) rec.aliases.push(id) })
+        return rec
+      }
+    }
+    const canonical = canonicalIdFor(asset)
+    const rec: VaultRecord = {
+      canonicalId: canonical, name: asset.name, symbol: asset.symbol,
+      aliases: ids, docs: []
+    }
+    assetVault.value[canonical] = rec
+    return rec
+  }
+
+  const addVaultDoc = (asset: Asset, doc: Omit<VaultDocument, 'id'> & { id?: string }) => {
+    const rec = resolveVaultRecord(asset)
+    const id = doc.id || `doc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
+    if (rec.docs.some(d => d.id === id)) return
+    rec.docs.unshift({ ...doc, id })
+    // Pro Record maximal 100 Dokumente (aelteste kursdaten zuerst raus)
+    if (rec.docs.length > 100) {
+      const idx = rec.docs.map((d, i) => ({ d, i })).reverse().find(x => x.d.kind === 'kursdaten')
+      rec.docs.splice(idx ? idx.i : rec.docs.length - 1, 1)
+    }
+  }
+
+  const removeVaultDoc = (canonicalId: string, docId: string) => {
+    const rec = assetVault.value[canonicalId]
+    if (rec) rec.docs = rec.docs.filter(d => d.id !== docId)
+  }
+
+  /**
+   * Regelmaessige Snapshots fuer Watchlist-Assets (max. 1x taeglich):
+   * Kurs-Stand wird lokal archiviert - reduziert Traffic und baut Historie auf.
+   */
+  const snapshotWatchlist = () => {
+    const today = new Date().toISOString().split('T')[0]
+    watchlist.value.forEach(assetId => {
+      const asset = assets.value.find(a => a.id === assetId)
+      if (!asset || asset.currentPrice <= 0) return
+      const rec = resolveVaultRecord(asset)
+      const snapId = `snap_${today}`
+      if (rec.docs.some(d => d.id === snapId)) return
+      addVaultDoc(asset, {
+        id: snapId, date: today, kind: 'kursdaten',
+        title: `Kurs-Snapshot ${today}`,
+        content: JSON.stringify({ price: asset.currentPrice, currency: asset.currency, usdPerEur: usdPerEur.value }),
+        source: asset.assetClass === 'crypto' ? 'Binance' : 'Alpha Vantage'
+      })
+    })
+  }
+
   // --- Fundamentaldaten (HKCM-Dashboard) ---
   const setFundamentals = (data: FundamentalData) => {
     fundamentals.value[data.assetId] = data
@@ -333,6 +399,7 @@ export const useAppStore = defineStore('app', () => {
       if (data.calendarEvents) calendarEvents.value = data.calendarEvents
       if (data.tranchePlans) tranchePlans.value = data.tranchePlans
       if (data.fundamentals) fundamentals.value = data.fundamentals
+      if (data.assetVault) assetVault.value = data.assetVault
       if (data.assets) {
         assets.value = data.assets
         // Gespeicherte Assets wieder im API-Register anmelden (fuer Kursabruf)
@@ -359,6 +426,7 @@ export const useAppStore = defineStore('app', () => {
         calendarEvents: calendarEvents.value,
         tranchePlans: tranchePlans.value,
         fundamentals: fundamentals.value,
+        assetVault: assetVault.value,
         assets: assets.value.map(a => ({ ...a, priceHistory: [] })),
         eventLog: eventLog.value.slice(0, 300),
         transactions: transactions.value,
@@ -374,7 +442,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   loadPersisted()
-  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents, tranchePlans, fundamentals, assets],
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents, tranchePlans, fundamentals, assets, assetVault],
     persist, { deep: true })
 
   return {
@@ -390,6 +458,7 @@ export const useAppStore = defineStore('app', () => {
     calendarEvents,
     tranchePlans,
     fundamentals,
+    assetVault,
     upcomingEvents,
     usdPerEur,
     transactions,
@@ -429,6 +498,11 @@ export const useAppStore = defineStore('app', () => {
     addTranchePlan,
     removeTranchePlan,
     setFundamentals,
+    canonicalIdFor,
+    resolveVaultRecord,
+    addVaultDoc,
+    removeVaultDoc,
+    snapshotWatchlist,
     setUsdPerEur,
     convertToActive,
     formatInActive,

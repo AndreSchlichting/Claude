@@ -2,13 +2,22 @@
   <div class="card">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold">{{ title || 'Kursverlauf' }}</h2>
-      <div class="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+      <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 flex-wrap">
         <span class="flex items-center gap-1">
           <span class="inline-block w-3 h-3 rounded-sm" style="background:#16a34a"></span> steigend
         </span>
         <span class="flex items-center gap-1">
           <span class="inline-block w-3 h-3 rounded-sm" style="background:#dc2626"></span> fallend
         </span>
+        <button @click="togglePatterns"
+          :class="['glass-chip', showPatterns ? 'glass-chip-active' : 'glass-chip-inactive']">
+          🕯 Muster
+        </button>
+        <button v-if="showPatterns" @click="patternInfoOn = !patternInfoOn"
+          :class="['glass-chip', patternInfoOn ? 'glass-chip-active' : 'glass-chip-inactive']"
+          title="Muster-Info ein-/ausschalten">
+          ℹ Info
+        </button>
       </div>
     </div>
 
@@ -50,12 +59,44 @@
           :fill="c.up ? '#16a34a' : '#dc2626'" rx="0.5" />
       </g>
 
+      <!-- Kerzenmuster-Marker -->
+      <g v-if="showPatterns">
+        <text v-for="m in patternMarkers" :key="'pm' + m.index"
+          :x="m.x" :y="m.y" font-size="11" text-anchor="middle"
+          :fill="m.color" style="cursor:pointer" font-weight="bold"
+          @click="selectedMatch = selectedMatch?.index === m.index ? null : m.match">
+          {{ m.icon }}
+        </text>
+      </g>
+
       <!-- X-Achsen-Labels -->
       <text v-for="(lbl, i) in xLabels" :key="'x' + i" :x="lbl.x" :y="H - 2"
         font-size="9" text-anchor="middle" fill="currentColor" fill-opacity="0.55">
         {{ lbl.text }}
       </text>
     </svg>
+
+    <!-- Muster-Info (ein-/ausschaltbar) -->
+    <div v-if="showPatterns && patternInfoOn && selectedMatch" class="mt-3 p-3 rounded-xl border-l-4"
+      :class="selectedMatch.pattern.signal === 'bullisch' ? 'border-green-500 bg-green-50/60 dark:bg-green-950/30' :
+              selectedMatch.pattern.signal === 'bearisch' ? 'border-red-500 bg-red-50/60 dark:bg-red-950/30' :
+              'border-gray-400 bg-white/40 dark:bg-white/5'">
+      <div class="flex justify-between items-start gap-2">
+        <p class="font-bold text-sm">
+          {{ selectedMatch.pattern.name }}
+          <span class="text-xs font-normal text-gray-500">({{ selectedMatch.pattern.talibName }} · {{ selectedMatch.pattern.candles }} Kerze{{ selectedMatch.pattern.candles > 1 ? 'n' : '' }} · Zuverlässigkeit {{ selectedMatch.pattern.reliability }})</span>
+        </p>
+        <button @click="selectedMatch = null" class="text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+      <p class="text-xs mt-1"><b>Theorie-Erwartung:</b> {{ selectedMatch.pattern.expectation }}</p>
+      <p class="text-xs mt-1"><b>Signal-Wertung:</b> {{ selectedMatch.pattern.tradingHint }}</p>
+    </div>
+    <p v-else-if="showPatterns && patternMarkers.length === 0" class="mt-2 text-xs text-gray-500">
+      Keine Kerzenmuster im sichtbaren Bereich erkannt.
+    </p>
+    <p v-else-if="showPatterns && patternInfoOn && !selectedMatch" class="mt-2 text-xs text-gray-500">
+      {{ patternMarkers.length }} Muster erkannt - Symbol im Chart anklicken für die Erklärung (▲ bullisch, ▼ bearisch, ◆ neutral).
+    </p>
 
     <!-- Stats -->
     <div v-if="stats" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -82,9 +123,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { PricePoint } from '../types'
 import type { KeyZone } from '../services/indicators'
+import { scanPatterns } from '../services/patternDb'
+import type { PatternMatch } from '../services/patternDb'
 
 interface Props {
   priceHistory: PricePoint[]
@@ -197,6 +240,40 @@ const stats = computed(() => {
   const last = visible.value[visible.value.length - 1].close
   const avgVolume = visible.value.reduce((s, p) => s + p.volume, 0) / visible.value.length
   return { high, low, changePercent: ((last - first) / first) * 100, avgVolume }
+})
+
+// --- Kerzenmuster-Overlay ---
+const showPatterns = ref(false)
+const patternInfoOn = ref(true)
+const selectedMatch = ref<PatternMatch | null>(null)
+
+const togglePatterns = () => {
+  showPatterns.value = !showPatterns.value
+  if (!showPatterns.value) selectedMatch.value = null
+}
+
+const patternMatches = computed<PatternMatch[]>(() => {
+  if (!showPatterns.value || visible.value.length < 10) return []
+  return scanPatterns(visible.value)
+})
+
+const patternMarkers = computed(() => {
+  const n = visible.value.length
+  if (n === 0) return []
+  const step = (W - padL - padR) / n
+  return patternMatches.value.map(m => {
+    const k = visible.value[m.index]
+    const bullish = m.pattern.signal === 'bullisch'
+    const bearish = m.pattern.signal === 'bearisch'
+    return {
+      index: m.index,
+      match: m,
+      x: padL + step * (m.index + 0.5),
+      y: bullish ? yFor(k.low) + 14 : bearish ? yFor(k.high) - 6 : yFor(k.high) - 6,
+      icon: bullish ? '▲' : bearish ? '▼' : '◆',
+      color: bullish ? '#16a34a' : bearish ? '#dc2626' : '#6b7280'
+    }
+  })
 })
 
 const formatVolume = (v: number) => {
