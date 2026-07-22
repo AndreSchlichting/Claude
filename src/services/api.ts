@@ -230,7 +230,125 @@ function parseAlphaVantageData(data: any, symbol: string): PricePoint[] {
   return points.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 }
 
+export interface SymbolSearchResult {
+  symbol: string
+  name: string
+  type: 'crypto' | 'stock' | 'etf'
+  region?: string
+  currency: 'USD' | 'EUR'
+  binanceSymbol?: string
+}
+
 export const apiService = {
+  /**
+   * Dynamisch gefundene Assets registrieren, damit Kursabruf funktioniert
+   * (wird auch beim App-Start für gespeicherte Assets aufgerufen)
+   */
+  registerDynamicAsset(asset: Asset) {
+    ASSET_REGISTRY[asset.id] = asset
+    if (asset.binanceSymbol) {
+      BINANCE_MAP[asset.id] = asset.binanceSymbol
+    }
+  },
+
+  /**
+   * Asset-Suche: Krypto über Binance (ohne Key), Aktien/ETFs über
+   * Alpha Vantage SYMBOL_SEARCH (weltweit, braucht kostenlosen Key)
+   */
+  async searchSymbols(query: string): Promise<{ results: SymbolSearchResult[]; hint: string }> {
+    const q = query.trim()
+    if (!q) return { results: [], hint: '' }
+    const results: SymbolSearchResult[] = []
+    let hint = ''
+
+    // 1. Krypto: existiert SYMBOL+USDT auf Binance?
+    const cryptoSymbol = q.toUpperCase().replace(/USDT$/, '')
+    try {
+      const resp = await axios.get(`${BINANCE_BASE}/ticker/price`, {
+        params: { symbol: `${cryptoSymbol}USDT` }, timeout: 6000
+      })
+      if (resp.data?.price) {
+        results.push({
+          symbol: cryptoSymbol,
+          name: `${cryptoSymbol} (Kryptowährung, Binance)`,
+          type: 'crypto',
+          currency: 'USD',
+          binanceSymbol: `${cryptoSymbol}USDT`
+        })
+      }
+    } catch { /* kein Krypto-Treffer */ }
+
+    // 2. Aktien/ETFs: Alpha Vantage SYMBOL_SEARCH
+    try {
+      const response = await axios.get(ALPHA_VANTAGE_BASE, {
+        params: { function: 'SYMBOL_SEARCH', keywords: q, apikey: ALPHA_VANTAGE_KEY },
+        timeout: 10000
+      })
+      const matches = response.data?.bestMatches || []
+      if (matches.length === 0 && ALPHA_VANTAGE_KEY === 'demo') {
+        hint = 'Aktien-/ETF-Suche braucht einen kostenlosen Alpha-Vantage-Key (alphavantage.co) in .env.local - Krypto-Suche funktioniert ohne.'
+      }
+      matches.slice(0, 8).forEach((m: any) => {
+        const type = (m['3. type'] || '').toLowerCase().includes('etf') ? 'etf' : 'stock'
+        results.push({
+          symbol: m['1. symbol'],
+          name: m['2. name'],
+          type,
+          region: m['4. region'],
+          currency: (m['8. currency'] === 'EUR' ? 'EUR' : 'USD')
+        })
+      })
+    } catch {
+      if (!hint) hint = 'Aktien-Suche derzeit nicht erreichbar (Alpha Vantage).'
+    }
+
+    return { results, hint }
+  },
+
+  /**
+   * Fundamentaldaten automatisch laden (Alpha Vantage OVERVIEW).
+   * Liefert vorformatierte Kennzahlen für das HKCM-Dashboard.
+   */
+  async fetchFundamentalsOverview(symbol: string): Promise<Record<string, string> | null> {
+    try {
+      const response = await axios.get(ALPHA_VANTAGE_BASE, {
+        params: { function: 'OVERVIEW', symbol, apikey: ALPHA_VANTAGE_KEY },
+        timeout: 12000
+      })
+      const d = response.data
+      if (!d || !d.Symbol) return null
+
+      const fmtMrd = (v: string) => {
+        const n = parseFloat(v)
+        if (!n) return ''
+        return n >= 1e9 ? `${(n / 1e9).toFixed(1).replace('.', ',')} Mrd. $`
+             : n >= 1e6 ? `${(n / 1e6).toFixed(0)} Mio. $` : v
+      }
+      const fmtPct = (v: string) => {
+        const n = parseFloat(v)
+        return isNaN(n) ? '' : `${(n * 100).toFixed(1).replace('.', ',')}%`
+      }
+
+      return {
+        name: d.Name || '',
+        beschreibung: d.Description || '',
+        profil: [d.Sector, d.Industry].filter(Boolean).join(' · '),
+        marktkapitalisierung: fmtMrd(d.MarketCapitalization),
+        umsatz: fmtMrd(d.RevenueTTM) + (d.RevenueTTM ? ' (TTM)' : ''),
+        umsatzwachstum: fmtPct(d.QuarterlyRevenueGrowthYOY) + (d.QuarterlyRevenueGrowthYOY ? ' YoY (Quartal)' : ''),
+        bruttomarge: d.GrossProfitTTM && d.RevenueTTM
+          ? `${((parseFloat(d.GrossProfitTTM) / parseFloat(d.RevenueTTM)) * 100).toFixed(1).replace('.', ',')}%` : '',
+        operativeMarge: fmtPct(d.OperatingMarginTTM),
+        kgv: d.PERatio && d.PERatio !== 'None' ? d.PERatio : '',
+        kuv: d.PriceToSalesRatioTTM && d.PriceToSalesRatioTTM !== 'None' ? d.PriceToSalesRatioTTM : '',
+        dividende: d.DividendYield && d.DividendYield !== 'None' && parseFloat(d.DividendYield) > 0
+          ? fmtPct(d.DividendYield) : 'Keine'
+      }
+    } catch {
+      return null
+    }
+  },
+
   // Assets
   async getAssets(): Promise<Asset[]> {
     const assets = Object.values(ASSET_REGISTRY)

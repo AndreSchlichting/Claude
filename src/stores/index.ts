@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { PaperBroker } from '../services/paperBroker'
+import { apiService } from '../services/api'
 import { ref, computed, watch } from 'vue'
-import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan } from '../types'
+import type { Asset, Portfolio, Position, Settings, Currency, Analysis, WarningEvent, Transaction, EventLogEntry, EventType, JournalEntry, PriceAlert, CalendarEvent, TranchePlan, FundamentalData } from '../types'
 
 const STORAGE_KEY = 'tdl_state_v1'
 
@@ -39,6 +40,7 @@ export const useAppStore = defineStore('app', () => {
   const watchlist = ref<string[]>([])
   const calendarEvents = ref<CalendarEvent[]>([])
   const tranchePlans = ref<TranchePlan[]>([])
+  const fundamentals = ref<Record<string, FundamentalData>>({})
   // Echter EUR/USD-Kurs (EZB via frankfurter.app), wird beim Start geladen
   const usdPerEur = ref(1.09)
   const analyses = ref<Analysis[]>([])
@@ -109,7 +111,9 @@ export const useAppStore = defineStore('app', () => {
 
   // Actions
   const addAsset = (asset: Asset) => {
+    if (assets.value.some(a => a.id === asset.id)) return
     assets.value.push(asset)
+    apiService.registerDynamicAsset(asset)
   }
 
   const updateAsset = (assetId: string, updates: Partial<Asset>) => {
@@ -279,6 +283,13 @@ export const useAppStore = defineStore('app', () => {
     tranchePlans.value = tranchePlans.value.filter(p => p.id !== id)
   }
 
+  // --- Fundamentaldaten (HKCM-Dashboard) ---
+  const setFundamentals = (data: FundamentalData) => {
+    fundamentals.value[data.assetId] = data
+    logEvent('signal_erzeugt', `Fundamental-Dashboard aktualisiert: ${data.assetId}`,
+      { assetId: data.assetId })
+  }
+
   // --- Währungsumrechnung ---
   const setUsdPerEur = (rate: number) => {
     if (rate > 0) usdPerEur.value = rate
@@ -321,6 +332,12 @@ export const useAppStore = defineStore('app', () => {
       if (data.watchlist) watchlist.value = data.watchlist
       if (data.calendarEvents) calendarEvents.value = data.calendarEvents
       if (data.tranchePlans) tranchePlans.value = data.tranchePlans
+      if (data.fundamentals) fundamentals.value = data.fundamentals
+      if (data.assets) {
+        assets.value = data.assets
+        // Gespeicherte Assets wieder im API-Register anmelden (fuer Kursabruf)
+        assets.value.forEach(a => apiService.registerDynamicAsset(a))
+      }
       if (data.transactions) transactions.value = data.transactions
       if (data.analyses) analyses.value = data.analyses
       if (data.warningEvents) warningEvents.value = data.warningEvents
@@ -341,6 +358,8 @@ export const useAppStore = defineStore('app', () => {
         watchlist: watchlist.value,
         calendarEvents: calendarEvents.value,
         tranchePlans: tranchePlans.value,
+        fundamentals: fundamentals.value,
+        assets: assets.value.map(a => ({ ...a, priceHistory: [] })),
         eventLog: eventLog.value.slice(0, 300),
         transactions: transactions.value,
         analyses: analyses.value.slice(0, 100),
@@ -355,7 +374,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   loadPersisted()
-  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents, tranchePlans],
+  watch([portfolios, eventLog, transactions, analyses, warningEvents, settings, selectedCurrency, selectedLanguage, journal, priceAlerts, watchlist, calendarEvents, tranchePlans, fundamentals, assets],
     persist, { deep: true })
 
   return {
@@ -370,6 +389,7 @@ export const useAppStore = defineStore('app', () => {
     watchlist,
     calendarEvents,
     tranchePlans,
+    fundamentals,
     upcomingEvents,
     usdPerEur,
     transactions,
@@ -408,6 +428,7 @@ export const useAppStore = defineStore('app', () => {
     removeCalendarEvent,
     addTranchePlan,
     removeTranchePlan,
+    setFundamentals,
     setUsdPerEur,
     convertToActive,
     formatInActive,
