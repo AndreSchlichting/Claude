@@ -5,6 +5,7 @@
   const FRAME_PATH = (i) => `frames/${String(i).padStart(4, "0")}.jpg`;
   const PRELOAD_BLOCKING_COUNT = 10;
   const MAX_DPR = 2;
+  const SCRUB_SECONDS = 0.5; // Nachlauf: glaettet ruckelige Mausrad-Ticks
 
   const section = document.getElementById("sequence-section");
   const sticky = document.getElementById("sequence-sticky");
@@ -20,6 +21,7 @@
   let targetIndex = 1;
   let needsRedraw = false;
   let rafScheduled = false;
+  let scrollTrigger = null;
 
   function loadImage(frameNumber) {
     return new Promise((resolve) => {
@@ -88,18 +90,32 @@
     });
   }
 
-  function computeProgress() {
-    const rect = section.getBoundingClientRect();
-    const scrollable = section.offsetHeight - window.innerHeight;
-    if (scrollable <= 0) return 0;
-    const p = -rect.top / scrollable;
-    return Math.min(1, Math.max(0, p));
-  }
+  // Treibt Pin + Frame-Fortschritt der Sektion: ScrollTrigger uebernimmt das
+  // Pinnen von #sequence-sticky (pin: true) und faehrt frameState.frame per
+  // scrub-getweentem Tween 1..FRAME_COUNT hoch. scrub: 0.5 laesst den
+  // Frame-Index dem Scroll um bis zu 0,5s hinterherlaufen statt jedem
+  // Mausrad-Tick sofort zu folgen - das glaettet das Ruckeln, ohne eine
+  // eigene Smooth-Scroll-Library zu brauchen.
+  function setupScrollTrigger() {
+    gsap.registerPlugin(ScrollTrigger);
 
-  function onScroll() {
-    const p = computeProgress();
-    const frameNumber = Math.round(p * (FRAME_COUNT - 1)) + 1; // 1-based index
-    requestDraw(frameNumber);
+    const frameState = { frame: 1 };
+
+    scrollTrigger = gsap.to(frameState, {
+      frame: FRAME_COUNT,
+      ease: "none",
+      scrollTrigger: {
+        trigger: section,
+        start: "top top",
+        end: "bottom bottom",
+        pin: sticky,
+        scrub: SCRUB_SECONDS,
+        invalidateOnRefresh: true,
+      },
+      onUpdate: () => {
+        requestDraw(Math.round(frameState.frame));
+      },
+    }).scrollTrigger;
   }
 
   function onResize() {
@@ -107,12 +123,12 @@
     // Nach Resize bleibt der Canvas sonst leer, weil sich der Index nicht
     // geaendert hat -> erzwungen neu zeichnen.
     currentIndex = -1;
-    const p = computeProgress();
-    const frameNumber = Math.round(p * (FRAME_COUNT - 1)) + 1;
-    targetIndex = frameNumber;
-    if (images[frameNumber]) {
-      drawFrame(frameNumber);
-      currentIndex = frameNumber;
+    if (images[targetIndex]) {
+      drawFrame(targetIndex);
+      currentIndex = targetIndex;
+    }
+    if (scrollTrigger) {
+      ScrollTrigger.refresh();
     }
   }
 
@@ -141,8 +157,8 @@
     drawFrame(1);
     currentIndex = 1;
 
-    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
+    setupScrollTrigger();
 
     // Rest der Frames in Hintergrund-Queue nachladen.
     loadRemainingInBackground(blockingCount + 1);
