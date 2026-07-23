@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scroll-gebundene Bildsequenz</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0b0b0b;
+  }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #eaeaea;
+  }
+  .spacer {
+    height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+  }
+  .spacer p {
+    max-width: 40ch;
+    opacity: 0.7;
+  }
+
+  /* --- Scroll-gebundene Sequenz --- */
+  #sequence-section {
+    position: relative;
+    /* 150 Frames * 12px Scrollstrecke pro Frame + 1 volle Viewport-Höhe
+       fuer die sichtbare Standzeit der Sektion */
+    height: calc(100vh + 150 * 12px);
+  }
+
+  /* Kein position: sticky hier - das Pinnen übernimmt GSAP ScrollTrigger
+     (pin: true). Zwei Pin-Mechanismen gleichzeitig auf derselben Sektion
+     würden gegeneinander arbeiten. */
+  #sequence-sticky {
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+
+  #sequence-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Reduced motion: keine Scrollbindung, statische Ansicht */
+  @media (prefers-reduced-motion: reduce) {
+    #sequence-section {
+      height: 100vh;
+    }
+    #sequence-sticky {
+      height: 100vh;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="spacer">
+    <p>Scroll nach unten, um die Bildsequenz abzuspielen.</p>
+  </div>
+
+  <section id="sequence-section">
+    <div id="sequence-sticky">
+      <canvas
+        id="sequence-canvas"
+        role="img"
+        aria-label="Bildsequenz, die sich mit dem Scroll-Fortschritt bildweise abspielt und den Ablauf einer Animation in 150 Einzelbildern zeigt"
+      ></canvas>
+    </div>
+  </section>
+
+  <div class="spacer">
+    <p>Ende der Sequenz. Der restliche Seiteninhalt scrollt normal weiter.</p>
+  </div>
+
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
